@@ -12,7 +12,10 @@
 //! ```
 //!
 use sift_science::{
-    events::{VerificationReason, VerificationType, VerifiedEvent},
+    events::{
+        Event, EventOptions, LoginProperties, LoginStatus, VerificationReason, VerificationType,
+        VerifiedEvent,
+    },
     verification::{CheckOptions, SendRequest, SendRequestEvent},
     Client,
 };
@@ -33,18 +36,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Instantiate sift client
     let sift = Client::new(api_key, http_client);
 
+    // Track an event to verify
+    sift.track(
+        Event::Login {
+            user_id: user_id.clone(),
+            session_id: Some(session_id.clone()),
+            properties: LoginProperties {
+                login_status: Some(LoginStatus::Success),
+                user_email: Some(send_to.clone()),
+                ..Default::default()
+            },
+        },
+        EventOptions::default(),
+    )
+    .await?;
+
     // Initiate a verification
     let response = sift
         .send_verification(SendRequest {
             user_id: user_id.clone(),
             send_to,
             verification_type: VerificationType::Email,
-            verified_entity_id: None,
             brand_name: None,
             site_country: None,
             event: SendRequestEvent {
-                session_id,
+                session_id: session_id.clone(),
                 verified_event: VerifiedEvent::Login,
+                verified_entity_id: Some(session_id.clone()),
                 ip: None,
                 reason: Some(VerificationReason::AutomatedRule),
                 browser: None,
@@ -64,7 +82,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initiate a verification
     let response = sift
-        .check_verification(user_id, code, CheckOptions::default())
+        .check_verification(
+            user_id,
+            code,
+            CheckOptions {
+                verified_event: Some(VerifiedEvent::Login),
+                verified_entity_id: Some(session_id),
+                ..Default::default()
+            },
+        )
         .await;
 
     info!(?response, "Got sift verification check response");

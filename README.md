@@ -8,19 +8,18 @@ Example import in Cargo.toml:
 
 ## Usage
 
-Here's an example tracking a [$create-account] event using the `reqwest` feature:
+Here's an example tracking a [$create_account] event using the `reqwest` feature:
 
 ```rust
 use sift_science::{
     events::{CreateAccountProperties, Event, EventOptions},
-    AbuseType, Client, 
+    AbuseType, Client,
 };
 use std::env;
 use tracing::{info, Level};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Init tracing
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     let user_id = env::var("USER_ID").expect("must specify USER_ID env var");
@@ -29,7 +28,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("API_KEY").expect("must specify API_KEY env var");
 
     // Instantiate sift client
-    let sift = Client::new(api_key.clone(), http_client);
+    let sift = Client::new(api_key, http_client);
+
+    // Track an event
     let response = sift
         .track(
             Event::CreateAccount {
@@ -54,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-[$create-account]: https://sift.com/developers/docs/curl/events-api/reserved-events/create-account
+[$create_account]: https://sift.com/developers/docs/curl/events-api/reserved-events/create-account
 
 ## Testing
 
