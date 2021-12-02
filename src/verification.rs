@@ -37,10 +37,6 @@ pub struct SendRequest {
     #[serde(rename = "$verification_type")]
     pub verification_type: VerificationType,
 
-    /// The ID of the entity impacted by the event being verified.
-    #[serde(rename = "$verified_entity_id")]
-    pub verified_entity_id: Option<String>,
-
     /// Name of the brand of product or service the user interacts with.
     #[serde(rename = "$brand_name")]
     pub brand_name: Option<String>,
@@ -88,6 +84,10 @@ pub struct SendRequestEvent {
     /// The type of the reserved event being verified.
     #[serde(rename = "$verified_event")]
     pub verified_event: VerifiedEvent,
+
+    /// The ID of the entity impacted by the event being verified.
+    #[serde(rename = "$verified_entity_id")]
+    pub verified_entity_id: Option<String>,
 
     /// The user's IP address
     #[serde(rename = "$ip")]
