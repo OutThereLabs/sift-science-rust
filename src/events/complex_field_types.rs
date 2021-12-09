@@ -9,7 +9,7 @@ use std::time::SystemTime;
 /// The value must be a nested object with the appropriate address subfields. We extract many
 /// geolocation features from these values. An address is represented as a nested JSON object.
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Address {
     /// Provide the full name associated with the address here.
     ///
@@ -65,7 +65,7 @@ pub struct Address {
 
 /// The details of an application as well as the device and OS it's running on.
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct App {
     /// The operating system on which application is running.
     ///
@@ -750,7 +750,7 @@ pub struct Discount {
 
 /// The Guest field type represents a person using a booking.
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Guest {
     /// Name of the individual on the booking.
     #[serde(rename = "$name")]
@@ -791,7 +791,7 @@ pub struct Guest {
 /// (such as OTAs, Rideshare, Vehicle rentals, Hotels, etc) should use `Booking` instead to
 /// leverage Sift's specialization in Travel and Ticketing use cases.
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Item {
     /// The item's unique identifier according to your systems.
     ///
@@ -880,7 +880,7 @@ pub struct Item {
 /// in `Transaction` events, but not in both. Choose the time where you have the most information to
 /// send or where it is easiest to include.
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct OrderedFrom {
     /// The customer's internal identifier for the specific physical location providing the good or
     /// service.
@@ -897,15 +897,15 @@ pub struct OrderedFrom {
 /// The value must be a nested object with the appropriate item subfields for the given payment
 /// method. Generally used with `Event::CreateOrder` or `Event::Transaction`.
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct PaymentMethod {
     /// The general type of payment being used.
     #[serde(rename = "$payment_type")]
-    pub payment_type: PaymentType,
+    pub payment_type: Option<PaymentType>,
 
     /// The specific gateway, company, product, etc. being used to process payment.
     #[serde(rename = "$payment_gateway")]
-    pub payment_gateway: String,
+    pub payment_gateway: Option<String>,
 
     /// The first six digits of the credit card number.
     ///
@@ -918,8 +918,9 @@ pub struct PaymentMethod {
     #[serde(rename = "$card_last4")]
     pub card_last4: Option<String>,
 
-    /// Response code from the AVS address verification system. Used in payments involving credit
-    /// cards.
+    /// Response code from the AVS address verification system.
+    ///
+    /// Used in payments involving credit cards.
     #[serde(rename = "$avs_result_code")]
     pub avs_result_code: Option<String>,
 
@@ -936,11 +937,28 @@ pub struct PaymentMethod {
     /// method verification from a payment processor and receive a failure set the value to
     /// `Failure`.
     #[serde(rename = "$verification_status")]
-    pub verification_status: PaymentMethodVerificationStatus,
+    pub verification_status: Option<PaymentMethodVerificationStatus>,
 
     /// This is the ABA routing number or SWIFT code used.
     #[serde(rename = "$routing_number")]
-    pub routing_number: String,
+    pub routing_number: Option<String>,
+
+    /// This is the first 6 characters of the IBAN structure as defined in [ISO 13616-1].
+    ///
+    /// [ISO 13616-1]: https://en.wikipedia.org/wiki/International_Bank_Account_Number
+    #[serde(rename = "$shortened_iban_first6")]
+    pub shortened_iban_first6: Option<String>,
+
+    /// This is the last 4 characters of the IBAN structure as defined in [ISO 13616-1].
+    ///
+    /// [ISO 13616-1]: https://en.wikipedia.org/wiki/International_Bank_Account_Number
+    #[serde(rename = "$shortened_iban_last4")]
+    pub shortened_iban_last4: Option<String>,
+
+    /// Used to indicate if a end-user/customer has provided authorization to collect future
+    /// payments via Sepa Direct Debit.
+    #[serde(rename = "$sepa_direct_debit_mandate")]
+    pub sepa_direct_debit_mandate: Option<bool>,
 
     /// In case of a declined payment, response code received from the payment processor indicating
     /// the reason for the decline.
@@ -994,6 +1012,28 @@ pub struct PaymentMethod {
     /// Card brand returned by Stripe.
     #[serde(rename = "$stripe_brand")]
     pub stripe_brand: Option<String>,
+
+    /// Full name of the user associated with the account.
+    #[serde(rename = "$account_holder_name")]
+    pub account_holder_name: Option<String>,
+
+    /// The last 5 digits of the account number associated with an ACH or a Wire transaction.
+    #[serde(rename = "$account_number_last5")]
+    pub account_number_last5: Option<String>,
+
+    /// Name of the financial institution used.
+    #[serde(rename = "$bank_name")]
+    pub bank_name: Option<String>,
+
+    /// Two-digit [ISO-3166] code for the bank country of origin.
+    ///
+    /// [ISO-3166]: http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    #[serde(rename = "$bank_country")]
+    pub bank_country: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the payment method.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// The general type of payment being used.
@@ -1090,7 +1130,7 @@ pub enum PaymentMethodVerificationStatus {
 /// $25 coupon on first order) and non-monetary (e.g. "1000 in game points to refer a friend")
 /// types.
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Promotion {
     /// The ID within your system that you use to represent this promotion. This ID is ideally
     /// unique to the promotion across users (e.g. "BackToSchool2016").
@@ -1145,7 +1185,7 @@ pub struct Promotion {
 /// Even if there's only a single segment associated with the booking, use segment to send valuable
 /// information about the trip.
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Segment {
     /// The address of the start of the journey.
     ///
