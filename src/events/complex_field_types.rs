@@ -868,6 +868,31 @@ pub struct Item {
     pub size: Option<String>,
 }
 
+/// Contains information about the merchant or seller providing goods or service.
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MerchantProfile {
+    /// The internal identifier for the merchant or seller providing the good or service.
+    #[serde(rename = "$merchant_id")]
+    pub merchant_id: Option<String>,
+
+    /// The merchant category code follows the 4-digit ISO code.
+    ///
+    /// Use [ISO-18245] MCC ISO Merchant Category Code.
+    ///
+    /// [ISO-18245]: https://en.wikipedia.org/wiki/ISO_18245
+    #[serde(rename = "$merchant_category_code")]
+    pub merchant_category_code: Option<String>,
+
+    /// The name of the merchant or seller providing the good or service.
+    #[serde(rename = "$merchant_name")]
+    pub merchant_name: String,
+
+    /// The address associated with the merchant of record.
+    #[serde(rename = "$merchant_address")]
+    pub merchant_address: Option<Address>,
+}
+
 /// Information about the specific physical location providing the good or service.
 ///
 /// This can also be used to capture pickup, delivery locations, etc.
@@ -1099,6 +1124,34 @@ pub enum PaymentType {
     /// Voucher
     #[serde(rename = "$voucher")]
     Voucher,
+
+    /// Sepa credit
+    #[serde(rename = "$sepa_credit")]
+    SepaCredit,
+
+    /// Sepa instant credit
+    #[serde(rename = "$sepa_instant_credit")]
+    SepaInstantCredit,
+
+    /// Sepa direct debit
+    #[serde(rename = "$sepa_direct_debit")]
+    SepaDirectDebit,
+
+    /// ACH credit
+    #[serde(rename = "$ach_credit")]
+    AchCredit,
+
+    /// ACH debit
+    #[serde(rename = "$ach_debit")]
+    AchDebit,
+
+    /// Wire credit
+    #[serde(rename = "$wire_credit")]
+    WireCredit,
+
+    /// Wire debit
+    #[serde(rename = "$wire_debit")]
+    WireDebit,
 }
 
 /// Indicates the payment method has been verified.

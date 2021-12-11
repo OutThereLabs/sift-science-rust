@@ -452,6 +452,28 @@ pub enum TransactionType {
     /// Transferring money from one account to another.
     #[serde(rename = "$transfer")]
     Transfer,
+
+    /// Acquisition of an asset, for example the purchase of cryptocurrency.
+    #[serde(rename = "$buy")]
+    Buy,
+
+    /// Disposal of an underlying asset, for example the sale of cryptocurrency.
+    #[serde(rename = "$sell")]
+    Sell,
+
+    /// Represents the movement of assets or funds between different wallets, exchanges, or
+    /// accounts.
+    ///
+    /// For example, sending funds through remittance services.
+    #[serde(rename = "$send")]
+    Send,
+
+    /// Represents the movement of assets or funds between different wallets, exchanges, or
+    /// accounts. 
+    ///
+    /// For example, receiving funds through remittance services.
+    #[serde(rename = "$receive")]
+    Receive,
 }
 
 /// Indicates the status of the transaction.
@@ -471,7 +493,7 @@ pub enum TransactionStatus {
     Pending,
 }
 
-///
+/// Indicates the category of a transaction decline sent by a PSP.
 #[derive(Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum DeclineCategory {
@@ -511,7 +533,63 @@ pub enum DeclineCategory {
     #[serde(rename = "$additional_verification_required")]
     AdditionalValidationRequired,
 
+    /// Invalid verification
+    #[serde(rename = "$invalid_verification")]
+    InvalidVerification,
+
     /// Other decline category
     #[serde(rename = "$other")]
     Other,
+}
+
+/// Indicates the status of a 3DS request.
+#[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum Status3Ds {
+    /// Successful
+    #[serde(rename = "$successful")]
+    Successful,
+
+    /// Attempted
+    #[serde(rename = "$attempted")]
+    Attempted,
+
+    /// Failed
+    #[serde(rename = "$failed")]
+    Failed,
+
+    /// Unavailable
+    #[serde(rename = "$unavailable")]
+    Unavailable,
+
+    /// Rejected
+    #[serde(rename = "$rejected")]
+    Rejected,
+}
+
+/// Reflects the source of an initiated challenge.
+#[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum Triggered3Ds {
+    /// Used to reflect a challenge initiated by the processor.
+    #[serde(rename = "$processor")]
+    Processor,
+
+    /// Used to indicate if the challenge was recommended by Sift via a workflow or a manual
+    /// review.
+    #[serde(rename = "$merchant")]
+    Merchant,
+}
+
+/// Indicates the method of delivery to the user.
+#[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum ShippingMethod {
+    /// Electronic shipping
+    #[serde(rename = "$electronic")]
+    Electronic,
+
+    /// Physical shipping
+    #[serde(rename = "$physical")]
+    Physical,
 }
