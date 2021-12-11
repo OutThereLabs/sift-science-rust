@@ -1,6 +1,7 @@
 use crate::events::{
     complex_field_types::{
-        Address, App, Booking, Browser, Item, OrderedFrom, PaymentMethod, Promotion,
+        Address, App, Booking, Browser, Item, MerchantProfile, OrderedFrom, PaymentMethod,
+        Promotion,
     },
     reserved_fields::*,
     AbuseType, Micros,
@@ -757,6 +758,59 @@ pub struct OrderProperties {
     /// Note: cannot be used in conjunction with `items`.
     #[serde(rename = "$bookings")]
     pub bookings: Option<Vec<Booking>>,
+
+    /// For marketplace businesses, this is the seller's user ID, typically a database primary key.
+    ///
+    /// Follow our [guidelines] for `user_id` values.
+    ///
+    /// [guidelines]: https://sift.com/developers/docs/curl/events-api/fields
+    #[serde(rename = "$seller_user_id")]
+    pub seller_user_id: Option<String>,
+
+    /// The list of promotions that apply to this order.
+    ///
+    /// You can add one or more promotions when creating or updating an order. You can also
+    /// separately add promotions to the account via the `AddPromotion` event.
+    #[serde(rename = "$promotions")]
+    pub promotions: Option<Vec<Promotion>>,
+
+    /// Indicates the method of delivery to the user.
+    #[serde(rename = "$shipping_method")]
+    pub shipping_method: Option<ShippingMethod>,
+
+    /// Shipping carrier for the shipment of the product.
+    #[serde(rename = "$shipping_carrier")]
+    pub shipping_carrier: Option<String>,
+
+    /// Shipping tracking number(s) for the shipment of the product(s).
+    #[serde(rename = "$shipping_tracking_numbers")]
+    pub shipping_tracking_numbers: Option<Vec<String>>,
+
+    /// The details about the specific physical location providing the good or service.
+    ///
+    /// This can also be used to capture pickup, delivery locations, etc.
+    #[serde(rename = "$ordered_from")]
+    pub ordered_from: Option<OrderedFrom>,
+
+    /// Name of the brand of product or service being purchased.
+    #[serde(rename = "$brand_name")]
+    pub brand_name: Option<String>,
+
+    /// Country the company is providing service from. Use [ISO-3166] country code.
+    ///
+    /// [ISO-3166]: http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    #[serde(rename = "$site_country")]
+    pub site_country: Option<String>,
+
+    /// Domain being interfaced with. Use [fully qualified domain name].
+    ///
+    /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
+    #[serde(rename = "$site_domain")]
+    pub site_domain: Option<String>,
+
+    /// The details about the merchant or seller providing the goods or service.
+    #[serde(rename = "$merchant_profile")]
+    pub merchant_profile: Option<MerchantProfile>,
 }
 
 /// Optional properties of the `Label` event
@@ -1160,6 +1214,31 @@ pub struct TransactionProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Used to indicate the status of a 3DS request.
+    #[serde(rename = "$status_3ds")]
+    pub status_3ds: Option<Status3Ds>,
+
+    /// Used to indicate the source of a 3DS request.
+    #[serde(rename = "$triggered_3ds")]
+    pub triggered_3ds: Option<Triggered3Ds>,
+
+    /// Used to indicate if this is a recurring payment for the same amount to the same merchant
+    /// (recurring payments are considered out of scope for SCA).
+    #[serde(rename = "$merchant_initiated_transaction")]
+    pub merchant_initiated_transaction: Option<bool>,
+
+    /// The details about the merchant or seller providing the goods or service.
+    #[serde(rename = "$merchant_initiated_transaction")]
+    pub merchant_profile: Option<MerchantProfile>,
+
+    /// The address to the specific physical location of the person sending a transaction.
+    #[serde(rename = "$sent_address")]
+    pub sent_address: Option<Address>,
+
+    /// The address to the specific physical location of the person receiving a transaction.
+    #[serde(rename = "$received_address")]
+    pub received_address: Option<Address>,
 }
 
 /// Properties of the `UpdateAccount` event.
