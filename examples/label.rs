@@ -43,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             description: None,
             source: Some("manual review".into()),
             analyst: None,
+            extra: None,
         },
         LabelOptions::default(),
     )
