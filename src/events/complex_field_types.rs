@@ -1,5 +1,5 @@
 use crate::common::{deserialize_opt_ms, serialize_opt_ms};
-use crate::events::Micros;
+use crate::events::{Micros, PaymentMethodVerificationStatus, PaymentType};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::time::SystemTime;
@@ -61,6 +61,10 @@ pub struct Address {
     /// [E.164]: https://en.wikipedia.org/wiki/E.164
     #[serde(rename = "$phone")]
     pub phone: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the address.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// The details of an application as well as the device and OS it's running on.
@@ -115,6 +119,10 @@ pub struct App {
     /// [ISO-3166]: http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
     #[serde(rename = "$client_language")]
     pub client_language: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the app.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// A specialized field, analogous to [`Item`], for travel and event ticketing use cases.
@@ -207,6 +215,10 @@ pub enum Booking {
         /// For example, tags might be team names, region, etc.
         #[serde(rename = "$tags")]
         tags: Option<Vec<String>>,
+
+        /// Any extra non-reserved fields to be recorded with the event.
+        #[serde(flatten)]
+        extra: Option<serde_json::Value>,
     },
 
     /// For hotel reservations.
@@ -278,6 +290,10 @@ pub enum Booking {
         /// For example, tags might be "non-smoking", "wi-fi", etc.
         #[serde(rename = "$tags")]
         tags: Option<Vec<String>>,
+
+        /// Any extra non-reserved fields to be recorded with the accomodatio.
+        #[serde(flatten)]
+        extra: Option<serde_json::Value>,
     },
 
     /// For airline tickets.
@@ -336,6 +352,10 @@ pub enum Booking {
         /// For example, tags might be "premium economy", "summer sale", etc.
         #[serde(rename = "$tags")]
         tags: Option<Vec<String>>,
+
+        /// Any extra non-reserved fields to be recorded with the flight.
+        #[serde(flatten)]
+        extra: Option<serde_json::Value>,
     },
 
     /// For bus, train or rail tickets.
@@ -395,6 +415,10 @@ pub enum Booking {
         /// For example, tags might be "sleeper", "summer sale", etc.
         #[serde(rename = "$tags")]
         tags: Option<Vec<String>>,
+
+        /// Any extra non-reserved fields to be recorded with the bus.
+        #[serde(flatten)]
+        extra: Option<serde_json::Value>,
     },
 
     /// For booking rides in a ridesharing marketplace.
@@ -455,6 +479,10 @@ pub enum Booking {
         /// For example, tags might be "sale", "first ride", etc.
         #[serde(rename = "$tags")]
         tags: Option<Vec<String>>,
+
+        /// Any extra non-reserved fields to be recorded with the ride share.
+        #[serde(flatten)]
+        extra: Option<serde_json::Value>,
     },
 
     /// For a reservation of a car or other vehicle.
@@ -515,6 +543,10 @@ pub enum Booking {
         /// For example, tags might be "sale", "first ride", etc.
         #[serde(rename = "$tags")]
         tags: Option<Vec<String>>,
+
+        /// Any extra non-reserved fields to be recorded with the vehicle.
+        #[serde(flatten)]
+        extra: Option<serde_json::Value>,
     },
 
     /// For a cruise ticket.
@@ -575,6 +607,10 @@ pub enum Booking {
         /// etc.
         #[serde(rename = "$tags")]
         tags: Option<Vec<String>>,
+
+        /// Any extra non-reserved fields to be recorded with the cruise.
+        #[serde(flatten)]
+        extra: Option<serde_json::Value>,
     },
 
     /// For any reservation use case not covered above.
@@ -660,6 +696,10 @@ pub enum Booking {
         ///
         /// For event tickets, for example, tags might be team names, region, etc.
         tags: Option<Vec<String>>,
+
+        /// Any extra non-reserved fields to be recorded with the booking.
+        #[serde(flatten)]
+        extra: Option<serde_json::Value>,
     },
 }
 
@@ -688,6 +728,10 @@ pub struct Browser {
     /// [ISO-3166]: http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
     #[serde(rename = "$content_language")]
     pub content_language: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the browser.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Monetary and non-monetary rewards.
@@ -710,6 +754,10 @@ pub struct CreditPoint {
     /// free service, karma, frequent flyer miles, MBs of storage, etc.).
     #[serde(rename = "$credit_point_type")]
     pub credit_point_type: String,
+
+    /// Any extra non-reserved fields to be recorded with the credit point.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Monetary discounts that are associated with a promotion.
@@ -746,6 +794,10 @@ pub struct Discount {
     /// denominations, like the Japanese Yen, use 1 JPY = 1000000 micros.
     #[serde(rename = "$minimum_purchase_amount")]
     pub minimum_purchase_amount: i64,
+
+    /// Any extra non-reserved fields to be recorded with the discount.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// The Guest field type represents a person using a booking.
@@ -781,6 +833,38 @@ pub struct Guest {
     /// The date of birth of the guest. Use ISO 8601 format, e.g. "1985-03-20" or "19850320"
     #[serde(rename = "$birth_date")]
     pub birth_date: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the guest.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// The Image complex type represents an image hosted on your website or app,
+/// typically uploaded by a user.
+///
+/// Used in the in one of the `Event::CreateContent` or `Event::UpdateContent`
+/// events.
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Image {
+    /// The MD5 hash of the image file.
+    ///
+    /// A hexadecimal hash for a single file could look like this:
+    /// `0cc175b9c0f1b6a831c399e269772661`.
+    #[serde(rename = "$md5_hash")]
+    pub md5_hash: Option<String>,
+
+    /// A hyperlink to the image file.
+    #[serde(rename = "$link")]
+    pub link: Option<String>,
+
+    /// The user-supplied caption with the image.
+    #[serde(rename = "$description")]
+    pub description: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the image.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Represents a product or service for sale in your business.
@@ -866,6 +950,10 @@ pub struct Item {
     /// The size of the item.
     #[serde(rename = "$size")]
     pub size: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the item.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Contains information about the merchant or seller providing goods or service.
@@ -891,6 +979,10 @@ pub struct MerchantProfile {
     /// The address associated with the merchant of record.
     #[serde(rename = "$merchant_address")]
     pub merchant_address: Option<Address>,
+
+    /// Any extra non-reserved fields to be recorded with the merchant profile.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Information about the specific physical location providing the good or service.
@@ -915,6 +1007,10 @@ pub struct OrderedFrom {
     /// The address of the specific physical location providing the good or service.
     #[serde(rename = "$store_address")]
     pub store_address: Option<Address>,
+
+    /// Any extra non-reserved fields to be recorded with the location.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Represents information about the payment methods provided by the user.
@@ -1061,118 +1157,6 @@ pub struct PaymentMethod {
     pub extra: Option<serde_json::Value>,
 }
 
-/// The general type of payment being used.
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
-pub enum PaymentType {
-    /// Cash
-    #[serde(rename = "$cash")]
-    Cash,
-
-    /// Check
-    #[serde(rename = "$check")]
-    Check,
-
-    /// Credit card
-    #[serde(rename = "$credit_card")]
-    CreditCard,
-
-    /// Crypto currency
-    #[serde(rename = "$crypto_currency")]
-    CryptoCurrency,
-
-    /// Digital wallet
-    #[serde(rename = "$digital_wallet")]
-    DigitalWallet,
-
-    /// Electronic fund transfer
-    #[serde(rename = "$electronic_fund_transfer")]
-    ElectronicFundTransfer,
-
-    /// Financing
-    #[serde(rename = "$financing")]
-    Financing,
-
-    /// Gift card
-    #[serde(rename = "$gift_card")]
-    GiftCard,
-
-    /// Invoice
-    #[serde(rename = "$invoice")]
-    Invoice,
-
-    /// In app purchase
-    #[serde(rename = "$in_app_purchase")]
-    InAppPurchase,
-
-    /// Money order
-    #[serde(rename = "$money_order")]
-    MoneyOrder,
-
-    /// Points
-    #[serde(rename = "$points")]
-    Points,
-
-    /// Store credit
-    #[serde(rename = "$store_credit")]
-    StoreCredit,
-
-    /// Third party processor
-    #[serde(rename = "$third_party_processor")]
-    ThirdPartyProcessor,
-
-    /// Voucher
-    #[serde(rename = "$voucher")]
-    Voucher,
-
-    /// Sepa credit
-    #[serde(rename = "$sepa_credit")]
-    SepaCredit,
-
-    /// Sepa instant credit
-    #[serde(rename = "$sepa_instant_credit")]
-    SepaInstantCredit,
-
-    /// Sepa direct debit
-    #[serde(rename = "$sepa_direct_debit")]
-    SepaDirectDebit,
-
-    /// ACH credit
-    #[serde(rename = "$ach_credit")]
-    AchCredit,
-
-    /// ACH debit
-    #[serde(rename = "$ach_debit")]
-    AchDebit,
-
-    /// Wire credit
-    #[serde(rename = "$wire_credit")]
-    WireCredit,
-
-    /// Wire debit
-    #[serde(rename = "$wire_debit")]
-    WireDebit,
-}
-
-/// Indicates the payment method has been verified.
-///
-/// E.g. if you request payment method verification from a payment processor and receive a failure
-/// set the value to `PaymentMethodVerificationStatus::Failure`.
-#[derive(Debug, Serialize, Deserialize)]
-pub enum PaymentMethodVerificationStatus {
-    /// Successful verification
-    #[serde(rename = "$success")]
-    Success,
-
-    /// Error verifying
-    #[serde(rename = "$failure")]
-    Failure,
-
-    /// Verification still pending
-    #[serde(rename = "$pending")]
-    Pending,
-}
-
 /// Promotions such as referrals, coupons, free trials, etc.
 ///
 /// Populate with the appropriate information to describe the promotion. Not all sub-fields will
@@ -1223,6 +1207,10 @@ pub struct Promotion {
     /// The credit_point field type generically models monetary and non-monetary rewards (e.g. in-game currency, stored account value, MBs storage, frequent flyer miles, etc.) for a promotion. Most promotions likely require a credit_point object or discount object to describe them, though both can be set for a given promotion.
     #[serde(rename = "$credit_point")]
     pub credit_point: Option<CreditPoint>,
+
+    /// Any extra non-reserved fields to be recorded with the promotion.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Detailed information about the components of a travel [Booking].
@@ -1301,4 +1289,8 @@ pub struct Segment {
     /// Eg. "Premium Economy", "Pool", "E3".
     #[serde(rename = "$fare_class")]
     pub fare_class: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the segment.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }

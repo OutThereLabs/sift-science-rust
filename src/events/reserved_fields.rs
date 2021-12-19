@@ -412,6 +412,117 @@ pub enum SecurityNotificationType {
     Push,
 }
 
+/// Indicates the payment method has been verified.
+///
+/// E.g. if you request payment method verification from a payment processor and receive a failure
+/// set the value to `PaymentMethodVerificationStatus::Failure`.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum PaymentMethodVerificationStatus {
+    /// Successful verification
+    #[serde(rename = "$success")]
+    Success,
+
+    /// Error verifying
+    #[serde(rename = "$failure")]
+    Failure,
+
+    /// Verification still pending
+    #[serde(rename = "$pending")]
+    Pending,
+}
+
+/// The general type of payment being used.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum PaymentType {
+    /// Cash
+    #[serde(rename = "$cash")]
+    Cash,
+
+    /// Check
+    #[serde(rename = "$check")]
+    Check,
+
+    /// Credit card
+    #[serde(rename = "$credit_card")]
+    CreditCard,
+
+    /// Crypto currency
+    #[serde(rename = "$crypto_currency")]
+    CryptoCurrency,
+
+    /// Digital wallet
+    #[serde(rename = "$digital_wallet")]
+    DigitalWallet,
+
+    /// Electronic fund transfer
+    #[serde(rename = "$electronic_fund_transfer")]
+    ElectronicFundTransfer,
+
+    /// Financing
+    #[serde(rename = "$financing")]
+    Financing,
+
+    /// Gift card
+    #[serde(rename = "$gift_card")]
+    GiftCard,
+
+    /// Invoice
+    #[serde(rename = "$invoice")]
+    Invoice,
+
+    /// In app purchase
+    #[serde(rename = "$in_app_purchase")]
+    InAppPurchase,
+
+    /// Money order
+    #[serde(rename = "$money_order")]
+    MoneyOrder,
+
+    /// Points
+    #[serde(rename = "$points")]
+    Points,
+
+    /// Store credit
+    #[serde(rename = "$store_credit")]
+    StoreCredit,
+
+    /// Third party processor
+    #[serde(rename = "$third_party_processor")]
+    ThirdPartyProcessor,
+
+    /// Voucher
+    #[serde(rename = "$voucher")]
+    Voucher,
+
+    /// Sepa credit
+    #[serde(rename = "$sepa_credit")]
+    SepaCredit,
+
+    /// Sepa instant credit
+    #[serde(rename = "$sepa_instant_credit")]
+    SepaInstantCredit,
+
+    /// Sepa direct debit
+    #[serde(rename = "$sepa_direct_debit")]
+    SepaDirectDebit,
+
+    /// ACH credit
+    #[serde(rename = "$ach_credit")]
+    AchCredit,
+
+    /// ACH debit
+    #[serde(rename = "$ach_debit")]
+    AchDebit,
+
+    /// Wire credit
+    #[serde(rename = "$wire_credit")]
+    WireCredit,
+
+    /// Wire debit
+    #[serde(rename = "$wire_debit")]
+    WireDebit,
+}
+
 /// The type of transaction being recorded.
 #[derive(Debug, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -469,7 +580,7 @@ pub enum TransactionType {
     Send,
 
     /// Represents the movement of assets or funds between different wallets, exchanges, or
-    /// accounts. 
+    /// accounts.
     ///
     /// For example, receiving funds through remittance services.
     #[serde(rename = "$receive")]
@@ -592,4 +703,82 @@ pub enum ShippingMethod {
     /// Physical shipping
     #[serde(rename = "$physical")]
     Physical,
+}
+
+/// The status of a posting.
+#[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum ContentStatus {
+    /// The posting has not yet been submitted by the user to go live.
+    #[serde(rename = "$draft")]
+    Draft,
+
+    /// The user has submitted the posting but has not gone live.
+    ///
+    /// This may be because the posting needs to be reviewed, the user needs to add payment
+    /// details, or because of some other processes within your business.
+    #[serde(rename = "$pending")]
+    Pending,
+
+    /// The posting is live and active on your site. Other users can see the posting.
+    #[serde(rename = "$active")]
+    Active,
+
+    /// The posting has been paused by the user and may return back to [ContentStatus::Active] at a
+    /// later date.
+    #[serde(rename = "$paused")]
+    Paused,
+
+    /// The posting has been deleted or archived by the user.
+    #[serde(rename = "$deleted_by_user")]
+    DeletedByUser,
+
+    /// The posting has been deleted or archived by your company due to violation of terms of
+    /// service or other policies.
+    #[serde(rename = "$deleted_by_company")]
+    DeletedByCompany,
+}
+
+/// The reason provided by the flagger.
+#[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum ContentFlagReason {
+    /// Foul language, harassment, hate speech or bullying.
+    ///
+    /// Example: Comments which contain hateful language.
+    #[serde(rename = "$toxic")]
+    Toxic,
+
+    /// The content doesn't relate to the topic of discussion.
+    #[serde(rename = "$irrelevant")]
+    Irrelevant,
+
+    /// Commercial solicitations which are against your terms of service. For example, sending
+    /// private messages to users to sell goods or services.
+    #[serde(rename = "$commercial")]
+    Commercial,
+
+    /// Generally, taking user off your site to obtain sensitive information.
+    #[serde(rename = "$phishing")]
+    Phishing,
+
+    /// The content includes private information (like contact or identity information) that should
+    /// not be shared.
+    #[serde(rename = "$private")]
+    Private,
+
+    /// The content is created to perpetrate a scam.
+    ///
+    /// For example, listings where the scammer will never ship the product. Or profiles for
+    /// romance scammers.
+    #[serde(rename = "$scam")]
+    Scam,
+
+    /// Sharing any type of copyrighted content.
+    #[serde(rename = "$copyright")]
+    Copyright,
+
+    /// Anything that doesn't fit in the above reasons.
+    #[serde(rename = "$other")]
+    Other,
 }

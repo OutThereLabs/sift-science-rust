@@ -1,6 +1,7 @@
+use crate::common::{deserialize_opt_ms, serialize_opt_ms};
 use crate::events::{
     complex_field_types::{
-        Address, App, Booking, Browser, Item, MerchantProfile, OrderedFrom, PaymentMethod,
+        Address, App, Booking, Browser, Image, Item, MerchantProfile, OrderedFrom, PaymentMethod,
         Promotion,
     },
     reserved_fields::*,
@@ -8,6 +9,7 @@ use crate::events::{
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::time::SystemTime;
 
 /// Core actions users take in your application.
 ///
@@ -98,6 +100,43 @@ pub enum Event {
         properties: ChargebackProperties,
     },
 
+    /// Use `ContentStatus` to update the status of content that you've already
+    /// sent to Sift.
+    ///
+    /// If the status is the only thing that's changing about the
+    /// content, use this as a convenient way to change it without having to
+    /// resend the rest of the content's information. Useful for long lived
+    /// content such as rentals, dating profiles, and job postings.
+    ///
+    /// Status can also be set using [Event::CreateContent] or [Event::UpdateContent].
+    ///
+    /// <https://sift.com/developers/docs/curl/events-api/reserved-events/content-status>
+    #[serde(rename = "$content_status")]
+    ContentStatus {
+        /// The user's internal ID. Users without an assigned `user_id` will not show up in
+        /// the console. Find valid `user_id` values [here].
+        ///
+        /// [here]: https://sift.com/developers/docs/curl/events-api/fields
+        #[serde(rename = "$user_id")]
+        user_id: String,
+
+        /// The unique ID for the piece of content that you’re updating the status of.
+        ///
+        /// Note: content IDs are case sensitive.
+        #[serde(rename = "$content_id")]
+        content_id: String,
+
+        /// The status of the posting.
+        #[serde(rename = "$status")]
+        status: ContentStatus,
+
+        /// Optional properties for the `ContentStatus` event.
+        ///
+        /// <https://sift.com/developers/docs/curl/events-api/reserved-events/content-status>
+        #[serde(flatten)]
+        properties: ContentStatusProperties,
+    },
+
     /// Use `CreateAccount` to capture user details at account creation. To capture updates to an
     /// account after it is initially created, use `Event::UpdateAccount`.
     ///
@@ -123,6 +162,43 @@ pub enum Event {
         properties: Box<CreateAccountProperties>,
     },
 
+    /// Used to tell Sift whenever a user creates content on your site or app.
+    ///
+    /// Examples of user-generated content include job listings, products for sale,
+    /// apartment rentals, dating profiles, and blog posts.
+    ///
+    /// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content>
+    #[serde(rename = "$create_content")]
+    CreateContent {
+        /// The user's internal ID.
+        ///
+        /// Users without an assigned `user_id` will not show up in the console.
+        ///
+        /// Find valid `user_id` values [here].
+        ///
+        /// [here]: https://sift.com/developers/docs/curl/events-api/fields
+        #[serde(rename = "$user_id")]
+        user_id: String,
+
+        /// The unique ID that you assign to an individual piece of content in
+        /// your system.
+        ///
+        /// Note: content IDs are case sensitive and must be unique across all
+        /// content types.
+        #[serde(rename = "$content_id")]
+        content_id: String,
+
+        /// The content
+        #[serde(flatten)]
+        content: Content,
+
+        /// Optional properties for the `CreateContent` event.
+        ///
+        /// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content>
+        #[serde(flatten)]
+        properties: ContentProperties,
+    },
+
     /// Use `CreateOrder` to record when a user submits an order for products or services they
     /// intend to purchase.
     ///
@@ -133,7 +209,9 @@ pub enum Event {
     #[serde(rename = "$create_order")]
     CreateOrder {
         /// The user's internal ID. Users without an assigned `user_id` will not show up in
-        /// the console. Find valid `user_id` values [here].
+        /// the console.
+        ///
+        /// Find valid `user_id` values [here].
         ///
         /// [here]: https://sift.com/developers/docs/curl/events-api/fields
         #[serde(rename = "$user_id")]
@@ -144,6 +222,63 @@ pub enum Event {
         /// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-order>
         #[serde(flatten)]
         properties: OrderProperties,
+    },
+
+    /// Used to let Sift know when a user reports content that may violate your
+    /// company’s policies.
+    ///
+    /// If you have a feature like "Report this post" or "Flag this profile",
+    /// send that event to Sift using this reserved event.
+    ///
+    /// <https://sift.com/developers/docs/curl/events-api/reserved-events/flag-content>
+    #[serde(rename = "$flag_content")]
+    FlagContent {
+        /// The content creator's account ID according to your systems.
+        ///
+        /// Note: User IDs are case sensitive.
+        ///
+        /// Find valid `user_id` values [here].
+        ///
+        /// [here]: https://sift.com/developers/docs/curl/events-api/fields
+        #[serde(rename = "$user_id")]
+        user_id: String,
+
+        /// The unique ID for the piece of content that is being flagged.
+        ///
+        /// Note: content IDs are case sensitive.
+        #[serde(rename = "$content_id")]
+        content_id: String,
+
+        /// Optional properties for the `FlagContent` event.
+        ///
+        /// <https://sift.com/developers/docs/curl/events-api/reserved-events/flag-content>
+        #[serde(flatten)]
+        properties: FlagContentProperties,
+    },
+
+    /// Used to associate data from a specific session to a user.
+    ///
+    /// Generally used only in anonymous checkout workflows.
+    ///
+    /// <https://sift.com/developers/docs/curl/events-api/reserved-events/link-session-to-user>
+    #[serde(rename = "$link_session_to_user")]
+    LinkSessionToUser {
+        /// The user's current session ID.
+        ///
+        /// Used to associate Javascript page events with their REST API
+        /// counterparts.
+        #[serde(rename = "$session_id")]
+        session_id: String,
+
+        /// The user's account ID according to your systems.
+        ///
+        /// Note: User IDs are case sensitive.
+        ///
+        /// Find valid `user_id` values [here].
+        ///
+        /// [here]: https://sift.com/developers/docs/curl/events-api/fields
+        #[serde(rename = "$user_id")]
+        user_id: String,
     },
 
     /// The Labels API is a way to tell Sift which transactions or events are fraudulent or
@@ -381,6 +516,40 @@ pub enum Event {
         properties: Box<UpdateAccountProperties>,
     },
 
+    /// Used to record changes to a content created previously with a `CreateContent` event.
+    ///
+    /// <https://sift.com/developers/docs/curl/events-api/reserved-events/update-content>
+    #[serde(rename = "$update_content")]
+    UpdateContent {
+        /// The user's internal ID.
+        ///
+        /// Users without an assigned `user_id` will not show up in the console.
+        ///
+        /// Find valid `user_id` values [here].
+        ///
+        /// [here]: https://sift.com/developers/docs/curl/events-api/fields
+        #[serde(rename = "$user_id")]
+        user_id: String,
+
+        /// The unique ID that you assign to an individual piece of content in
+        /// your system.
+        ///
+        /// Note: content IDs are case sensitive and must be unique across all
+        /// content types.
+        #[serde(rename = "$content_id")]
+        content_id: String,
+
+        /// The content
+        #[serde(flatten)]
+        content: Content,
+
+        /// Optional properties for the `UpdateContent` event.
+        ///
+        /// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content>
+        #[serde(flatten)]
+        properties: ContentProperties,
+    },
+
     /// Use `UpdateOrder` to record when a user updates an order for products or services they
     /// intend to purchase.
     ///
@@ -468,6 +637,363 @@ pub enum Event {
     },
 }
 
+/// Types of content Sift supports
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content>
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Content {
+    /// Used to tell Sift whenever a user posts into the comment section your
+    /// site.
+    ///
+    /// Examples of comments include a comment on a social media or blog post,
+    /// and discussion sections on news articles.
+    #[serde(rename = "$comment")]
+    Comment(CommentProperties),
+
+    /// Used whenever a user creates a listing on your site.
+    ///
+    /// Examples of listings include job listing, product for sale, or an
+    /// apartment for rent.
+    #[serde(rename = "$listing")]
+    Listing(ListingProperties),
+
+    /// Used to represent a message exchanged between users of your service.
+    #[serde(rename = "$message")]
+    Message(MessageProperties),
+
+    /// Used to represent information a user has shared with your community.
+    ///
+    /// Examples include social media posts like status updates, forum posts,
+    /// blog articles, etc.
+    #[serde(rename = "$post")]
+    Post(PostProperties),
+
+    /// Used to represent information related to a user's profile.
+    ///
+    /// This may include a social media profile, dating profile, etc.
+    #[serde(rename = "$profile")]
+    Profile(ProfileProperties),
+
+    /// Used to represent information related to a product or service review
+    /// submitted by your users.
+    #[serde(rename = "$review")]
+    Review(ReviewProperties),
+}
+
+/// Properties of the [Content::Comment] value.
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content/comment>
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct CommentProperties {
+    /// The text content of the comment.
+    #[serde(rename = "$body")]
+    pub body: Option<String>,
+
+    /// The email address provided with the listing for contacting the poster.
+    ///
+    /// When no email address is provided for the listing, use the email address
+    /// of the user account instead.
+    #[serde(rename = "$contact_email")]
+    pub contact_email: Option<String>,
+
+    /// The id of the immediate parent comment.
+    ///
+    /// Only use if it is a reply to a previous comment.
+    #[serde(rename = "$parent_comment_id")]
+    pub parent_comment_id: Option<String>,
+
+    /// The id of the content being commented on.
+    ///
+    /// For example, this would be the id of the social media post to which the
+    /// comment applies.
+    #[serde(rename = "$root_content_id")]
+    pub root_content_id: Option<String>,
+
+    /// The list of images shared by the user with their comment.
+    ///
+    /// It includes images pasted inline or attached separately.
+    #[serde(rename = "$images")]
+    pub images: Option<Vec<Image>>,
+
+    /// Any extra non-reserved fields to be recorded with the comment.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// Used whenever a user creates a listing on your site.
+///
+/// Examples of listings include job listing, product for sale, or an apartment
+/// for rent.
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content/listing>
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ListingProperties {
+    /// The subject of the listing.
+    #[serde(rename = "$subject")]
+    pub subject: Option<String>,
+
+    /// The text content of the listing.
+    #[serde(rename = "$body")]
+    pub body: Option<String>,
+
+    /// The email address provided with the listing for contacting the poster.
+    ///
+    /// When no email address is provided for the listing, use the email address
+    /// of the user account instead.
+    #[serde(rename = "$contact_email")]
+    pub contact_email: Option<String>,
+
+    /// The physical contact address provided with the listing.
+    ///
+    /// When no address is provided for the listing, use the physical address of
+    /// the user account instead.
+    #[serde(rename = "$contact_address")]
+    pub contact_address: Option<Address>,
+
+    /// The locations associated with the listing.
+    ///
+    /// For example, this array would contain the location of the rental
+    /// listing. You can pass one or more addresses that are associated with
+    /// your listing. Pass as much information as you have. Partial addresses
+    /// such as just the city and state are fine if that's all you have.
+    #[serde(rename = "$locations")]
+    pub locations: Option<Vec<Address>>,
+
+    /// The items array represents physical or digital items listed by the user.
+    #[serde(rename = "$listed_items")]
+    pub listed_items: Option<Vec<Item>>,
+
+    /// The list of images shared by the user with their listing.
+    ///
+    /// It includes images pasted inline or attached separately.
+    #[serde(rename = "$images")]
+    pub images: Option<Vec<Image>>,
+
+    /// The time when the listing will expire.
+    ///
+    /// Only set if the listing is time bound in some way (e.g. car auction will
+    /// close 14 days from date of posting).
+    #[serde(
+        rename = "$expiration_time",
+        deserialize_with = "deserialize_opt_ms",
+        serialize_with = "serialize_opt_ms"
+    )]
+    pub expiration_time: Option<SystemTime>,
+
+    /// Any extra non-reserved fields to be recorded with the listing.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// Used to represent a message exchanged between users of your service.
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content/message>
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct MessageProperties {
+    /// The user-supplied subject of the message.
+    #[serde(rename = "$subject")]
+    pub subject: Option<String>,
+
+    /// The text content of the message.
+    #[serde(rename = "$body")]
+    pub body: Option<String>,
+
+    /// The email address associated with the message sender.
+    #[serde(rename = "$contact_email")]
+    pub contact_email: Option<String>,
+
+    /// The content id in the context of which the messages is sent.
+    ///
+    /// For example, this would be the job listing being responded to.
+    #[serde(rename = "$root_content_id")]
+    pub root_content_id: Option<String>,
+
+    /// The user ids of the recipients of the message.
+    #[serde(rename = "$recipient_user_ids")]
+    pub recipient_user_ids: Option<Vec<String>>,
+
+    /// The list of images shared by the user with their message.
+    ///
+    /// It includes images pasted inline or attached separately.
+    #[serde(rename = "$images")]
+    pub images: Option<Vec<Image>>,
+
+    /// Any extra non-reserved fields to be recorded with the message.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// Used to represent information a user has shared with your community.
+///
+/// Examples include social media posts like status updates, forum posts, blog
+/// articles, etc.
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content/post>
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct PostProperties {
+    /// The user-supplied subject of the post.
+    #[serde(rename = "$subject")]
+    pub subject: Option<String>,
+
+    /// The text content of the post.
+    #[serde(rename = "$body")]
+    pub body: Option<String>,
+
+    /// The email address provided with the post for contacting the poster.
+    ///
+    /// When no email address is provided for the post, use the email address
+    /// of the user account instead.
+    #[serde(rename = "$contact_email")]
+    pub contact_email: Option<String>,
+
+    /// The physical contact address provided with the post.
+    ///
+    /// When no address is provided for the post, use the physical address of
+    /// the user account instead.
+    #[serde(rename = "$contact_address")]
+    pub contact_address: Option<Address>,
+
+    /// The locations associated with the post.
+    ///
+    /// In the example above, the locations array contains the check-in location
+    /// of a social-media post. You can pass one or more addresses that are
+    /// associated with your post. Pass as much information as you have. Partial
+    /// addresses such as just the city and state are fine if that's all you
+    /// have.
+    #[serde(rename = "$locations")]
+    pub locations: Option<Vec<Address>>,
+
+    /// The category or categories you associate with the posting.
+    ///
+    /// For example, a blog post might be categorized as ["Family", "Travel"].
+    #[serde(rename = "$categories")]
+    pub categories: Option<Vec<String>>,
+
+    /// The list of images shared by the user with their post.
+    ///
+    /// It includes images pasted inline or attached separately.
+    #[serde(rename = "$images")]
+    pub images: Option<Vec<Image>>,
+
+    /// The time when the post will expire.
+    ///
+    /// Only set if the post is time bound in some way.
+    #[serde(
+        rename = "$expiration_time",
+        deserialize_with = "deserialize_opt_ms",
+        serialize_with = "serialize_opt_ms"
+    )]
+    pub expiration_time: Option<SystemTime>,
+
+    /// Any extra non-reserved fields to be recorded with the post.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// Used to represent information related to a user's profile.
+///
+/// This may include a social media profile, dating profile, etc.
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content/profile>
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ProfileProperties {
+    /// The text content of the profile.
+    #[serde(rename = "$body")]
+    pub body: Option<String>,
+
+    /// The email address provided with the profile for contacting the user.
+    ///
+    /// When no email address is provided for the profile, use the email address
+    /// of the user account instead.
+    #[serde(rename = "$contact_email")]
+    pub contact_email: Option<String>,
+
+    /// The physical contact address provided with the profile.
+    ///
+    /// When no address is provided for the profile, use the physical address of
+    /// the user account instead.
+    #[serde(rename = "$contact_address")]
+    pub contact_address: Option<Address>,
+
+    /// The list of images shared by the user with their profile.
+    ///
+    /// It includes images pasted inline or attached separately.
+    #[serde(rename = "$images")]
+    pub images: Option<Vec<Image>>,
+
+    /// The category or categories you associate with the profile.
+    ///
+    /// For example, a profile on a services marketplace might be categorized as
+    /// `["Photographer", "Weddings"]`.
+    #[serde(rename = "$categories")]
+    pub categories: Option<Vec<String>>,
+
+    /// Any extra non-reserved fields to be recorded with the profile.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// Used to represent information related to a product or service review
+/// submitted by your users.
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content/review>
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ReviewProperties {
+    /// The user-supplied subject of the review.
+    #[serde(rename = "$subject")]
+    pub subject: Option<String>,
+
+    /// The text content of the review.
+    #[serde(rename = "$body")]
+    pub body: Option<String>,
+
+    /// The email address provided with the post for contacting the reviewer.
+    ///
+    /// When no email address is provided for the review, use the email address
+    /// of the user account instead.
+    #[serde(rename = "$contact_email")]
+    pub contact_email: Option<String>,
+
+    /// The locations associated with the review.
+    ///
+    /// You can pass one or more addresses that are associated with your review.
+    /// Pass as much information as you have. Partial addresses such as just the
+    /// city and state are fine if that's all you have.
+    #[serde(rename = "$locations")]
+    pub locations: Option<Vec<Address>>,
+
+    /// An Item object representing the item being reviewed.
+    #[serde(rename = "$item_reviewed")]
+    pub item_reviewed: Option<Item>,
+
+    /// The $content_id of the item being reviewed.
+    ///
+    /// For example, this could be the id for the listing or profile being
+    /// reviewed.
+    #[serde(rename = "$reviewed_content_id")]
+    pub reviewed_content_id: Option<String>,
+
+    /// A numeric rating supplied by the reviewer.
+    #[serde(rename = "$rating")]
+    pub rating: Option<f32>,
+
+    /// The list of images shared by the user with their review.
+    ///
+    /// It includes images pasted inline or attached separately.
+    #[serde(rename = "$images")]
+    pub images: Option<Vec<Image>>,
+
+    /// Any extra non-reserved fields to be recorded with the review.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
 /// Properties of the `AddItemToCart` event.
 ///
 /// <https://sift.com/developers/docs/curl/events-api/reserved-events/add-item-to-cart>
@@ -515,6 +1041,10 @@ pub struct AddItemToCartProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `AddPromotion` event.
@@ -562,6 +1092,10 @@ pub struct AddPromotionProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `Chargeback` event.
@@ -584,6 +1118,53 @@ pub struct ChargebackProperties {
     /// This field can be used to capture the reason given.
     #[serde(rename = "$chargeback_reason")]
     pub chargeback_reason: Option<ChargebackReason>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// Properties of the `ContentStatus` event.
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/content-status>
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ContentStatusProperties {
+    /// The user agent of the browser that is used to set the content status.
+    /// Represented by the [Browser] object. Use this field if the client is a
+    /// browser.
+    ///
+    /// Note: cannot be used in conjunction with `app`.
+    #[serde(rename = "$browser")]
+    pub browser: Option<Browser>,
+
+    /// The details of the app, os, and device that is used to set the content
+    /// status. Represented by the [App] struct. Use this field if the client is
+    /// an app.
+    ///
+    /// Note: cannot be used in conjunction with `browser`.
+    #[serde(rename = "$app")]
+    pub app: Option<App>,
+
+    /// Name of the brand of product or service being purchased.
+    #[serde(rename = "$brand_name")]
+    pub brand_name: Option<String>,
+
+    /// Country the company is providing service from. Use [ISO-3166] country code.
+    ///
+    /// [ISO-3166]: http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    #[serde(rename = "$site_country")]
+    pub site_country: Option<String>,
+
+    /// Domain being interfaced with. Use [fully qualified domain name].
+    ///
+    /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
+    #[serde(rename = "$site_domain")]
+    pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `CreateAccount` event
@@ -679,6 +1260,70 @@ pub struct CreateAccountProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// Properties of the `CreateContent` and `UpdateContent` events.
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/create-content>
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/update-content>
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct ContentProperties {
+    /// The user's current session ID, used to tie a user's action before and
+    /// after login or account creation.
+    #[serde(rename = "$session_id")]
+    pub session_id: Option<String>,
+
+    /// The status of the comment.
+    #[serde(rename = "$status")]
+    pub status: Option<ContentStatus>,
+
+    /// IP address of the request made by the user.
+    ///
+    /// Recommended for historical backfills and customers with with mobile apps.
+    #[serde(rename = "$ip")]
+    pub ip: Option<String>,
+
+    /// The user agent of the browser that is used to create the content.
+    ///
+    /// Represented by the [Browser] object. Use this field if the client is a
+    /// browser.
+    ///
+    /// Note: cannot be used in conjunction with `app`.
+    #[serde(rename = "$browser")]
+    pub browser: Option<Browser>,
+
+    /// The details of the app, os, and device that is used to create the content.
+    ///
+    /// Represented by the [App] struct. Use this field if the client is an app.
+    ///
+    /// Note: cannot be used in conjunction with `browser`.
+    #[serde(rename = "$app")]
+    pub app: Option<App>,
+
+    /// Name of the brand of product or service being purchased.
+    #[serde(rename = "$brand_name")]
+    pub brand_name: Option<String>,
+
+    /// Country the company is providing service from. Use [ISO-3166] country code.
+    ///
+    /// [ISO-3166]: http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    #[serde(rename = "$site_country")]
+    pub site_country: Option<String>,
+
+    /// Domain being interfaced with. Use [fully qualified domain name].
+    ///
+    /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
+    #[serde(rename = "$site_domain")]
+    pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `CreateOrder` and `UpdateOrder` events.
@@ -811,6 +1456,31 @@ pub struct OrderProperties {
     /// The details about the merchant or seller providing the goods or service.
     #[serde(rename = "$merchant_profile")]
     pub merchant_profile: Option<MerchantProfile>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// Properties of the `FlagContent` event.
+///
+/// <https://sift.com/developers/docs/curl/events-api/reserved-events/flag-content>
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct FlagContentProperties {
+    /// The account ID of the user who is flagging the content.
+    ///
+    /// Note: User IDs are case sensitive.
+    #[serde(rename = "$flagged_by")]
+    pub flagged_by: Option<String>,
+
+    /// The reason provided by the flagger.
+    #[serde(rename = "$reason")]
+    pub reason: Option<ContentFlagReason>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Optional properties of the `Label` event
@@ -836,6 +1506,10 @@ pub struct LabelProperties {
     /// Useful for tracking purposes after the fact.
     #[serde(rename = "$analyst")]
     pub analyst: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `Login` event
@@ -907,6 +1581,10 @@ pub struct LoginProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `Logout` event.
@@ -944,6 +1622,10 @@ pub struct LogoutProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `OrderStatus` event.
@@ -1002,6 +1684,10 @@ pub struct OrderStatusProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `RemoveItemFromCart` event.
@@ -1043,6 +1729,10 @@ pub struct RemoveItemFromCartProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `SecurityNotification` event.
@@ -1095,6 +1785,10 @@ pub struct SecurityNotificationProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `Transaction` event.
@@ -1239,6 +1933,10 @@ pub struct TransactionProperties {
     /// The address to the specific physical location of the person receiving a transaction.
     #[serde(rename = "$received_address")]
     pub received_address: Option<Address>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `UpdateAccount` event.
@@ -1343,6 +2041,10 @@ pub struct UpdateAccountProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `UpdatePassword` event.
@@ -1382,6 +2084,10 @@ pub struct UpdatePasswordProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }
 
 /// Properties of the `Verification` event.
@@ -1458,4 +2164,8 @@ pub struct VerificationProperties {
     /// [fully qualified domain name]: https://en.wikipedia.org/wiki/Fully_qualified_domain_name
     #[serde(rename = "$site_domain")]
     pub site_domain: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the event.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
 }

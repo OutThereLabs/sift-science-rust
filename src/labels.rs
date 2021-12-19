@@ -89,6 +89,9 @@ pub struct LabelProperties {
     ///
     /// Useful for tracking purposes after the fact.
     pub analyst: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with label.
+    pub extra: Option<serde_json::Value>,
 }
 
 impl From<LabelProperties> for Event {
@@ -99,6 +102,7 @@ impl From<LabelProperties> for Event {
             description,
             source,
             analyst,
+            extra,
         } = props;
 
         Event::Label {
@@ -108,6 +112,7 @@ impl From<LabelProperties> for Event {
                 description,
                 source,
                 analyst,
+                extra,
             },
         }
     }
