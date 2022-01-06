@@ -845,7 +845,7 @@ pub struct Guest {
 /// Used in the in one of the `Event::CreateContent` or `Event::UpdateContent`
 /// events.
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Image {
     /// The MD5 hash of the image file.
     ///

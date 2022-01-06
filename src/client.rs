@@ -38,6 +38,16 @@ pub struct Client<T> {
     pub origin: String,
 }
 
+impl<T: Clone> Clone for Client<T> {
+    fn clone(&self) -> Self {
+        Client {
+            api_key: self.api_key.clone(),
+            http_client: self.http_client.clone(),
+            origin: self.origin.clone(),
+        }
+    }
+}
+
 impl<T: HttpClient> Client<T> {
     /// construct a new sift client client with a given api and HTTP client
     pub fn new(api_key: impl Into<String>, http_client: T) -> Self {
