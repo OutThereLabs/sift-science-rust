@@ -8,6 +8,7 @@ pub mod events;
 pub mod labels;
 pub mod score;
 pub mod verification;
+pub mod webhooks;
 
 #[cfg(feature = "awc")]
 pub use client::AwcClient;
