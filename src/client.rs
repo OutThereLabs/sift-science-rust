@@ -6,6 +6,7 @@ use crate::{
     verification::{
         self, CheckOptions, CheckRequest, CheckResponse, ResendRequest, SendRequest, SendResponse,
     },
+    webhooks::{self, Webhook, WebhookRequest, WebhookResponse, WebhooksResponse},
     Error, Result,
 };
 use async_trait::async_trait;
@@ -31,6 +32,13 @@ pub struct Client<T> {
     /// Sift api key
     pub api_key: String,
 
+    /// Sift account id
+    ///
+    /// Your Sift account id can on the [Profile Tab] in the console.
+    ///
+    /// [Profile Tab]: https://sift.com/console/account/profile
+    pub account_id: Option<String>,
+
     /// Http client
     pub http_client: T,
 
@@ -53,6 +61,7 @@ impl<T: HttpClient> Client<T> {
     pub fn new(api_key: impl Into<String>, http_client: T) -> Self {
         Client {
             api_key: api_key.into(),
+            account_id: None,
             http_client,
             origin: SIFT_ORIGIN.into(),
         }
@@ -63,6 +72,12 @@ impl<T: HttpClient> Client<T> {
     /// Useful for testing environments and debugging.
     pub fn with_origin(mut self, origin: impl Into<String>) -> Self {
         self.origin = origin.into();
+        self
+    }
+
+    /// Override the sift account id.
+    pub fn with_account_id(mut self, account_id: impl Into<String>) -> Self {
+        self.account_id = Some(account_id.into());
         self
     }
 
@@ -122,7 +137,7 @@ impl<T: HttpClient> Client<T> {
                         ..
                     }),
                 ..
-            } if status != 0 => Err(Error::Client {
+            } if status != 0 => Err(Error::Request {
                 status,
                 error_message,
             }),
@@ -159,7 +174,7 @@ impl<T: HttpClient> Client<T> {
 
         let score_json = self
             .http_client
-            .get(&url, &query_params.into(), timeout)
+            .get(&url, &query_params.into(), timeout, None)
             .await?;
 
         trace!(?score_json, "sift score API response");
@@ -270,7 +285,7 @@ impl<T: HttpClient> Client<T> {
                     ..
                 } if status != 0 => {
                     warn!(status, ?error_message, "verification send error");
-                    Err(Error::Client {
+                    Err(Error::Request {
                         status,
                         error_message,
                     })
@@ -319,7 +334,7 @@ impl<T: HttpClient> Client<T> {
                     ..
                 } if status != 0 => {
                     warn!(status, ?error_message, "verification resend error");
-                    Err(Error::Client {
+                    Err(Error::Request {
                         status,
                         error_message,
                     })
@@ -394,7 +409,7 @@ impl<T: HttpClient> Client<T> {
                     ..
                 } if status != 0 => {
                     warn!(status, ?error_message, "verification check error");
-                    Err(Error::Client {
+                    Err(Error::Request {
                         status,
                         error_message,
                     })
@@ -409,6 +424,184 @@ impl<T: HttpClient> Client<T> {
             )),
         }
     }
+
+    /// Creates a new webhook with a specified URL.
+    ///
+    /// See <https://sift.com/developers/docs/curl/webhooks-api/create> for examples.
+    ///
+    /// # Errors
+    ///
+    /// This errors if an `account_id` is not set for this client.
+    #[instrument(skip(self, req))]
+    pub async fn create_webhook(&self, req: WebhookRequest) -> Result<Webhook> {
+        let account_id = self
+            .account_id
+            .as_ref()
+            .ok_or_else(|| Error::Server("account id not specified".into()))?;
+
+        let timeout = DEFAULT_TIMEOUT;
+        let api_version = webhooks::ApiVersion::V3;
+        let url = format!(
+            "{}/{}/accounts/{}/webhooks",
+            self.origin, api_version, account_id
+        );
+        let body = serde_json::json!(req);
+        let auth = Some(self.api_key.as_str());
+
+        debug!(?url, ?req, "creating webhook");
+        trace!(body = ?serde_json::to_string(&body), "webhook data");
+
+        let response_json = self
+            .http_client
+            .post(&url, None, Some(&body), timeout, auth)
+            .await?;
+
+        trace!(?response_json, "sift webhook API response");
+
+        match response_json {
+            Some(response_json) => Ok(serde_json::from_value(response_json)?),
+            None => Err(Error::Server(
+                "Expected a webhook, but received empty server response".into(),
+            )),
+        }
+    }
+
+    /// Get all webhooks.
+    ///
+    /// See <https://sift.com/developers/docs/curl/webhooks-api/list> for examples.
+    ///
+    /// # Errors
+    ///
+    /// This errors if an `account_id` is not set for this client.
+    #[instrument(skip(self))]
+    pub async fn get_webhooks(&self) -> Result<Vec<Webhook>> {
+        let account_id = self
+            .account_id
+            .as_ref()
+            .ok_or_else(|| Error::Server("account id not specified".into()))?;
+
+        let timeout = DEFAULT_TIMEOUT;
+        let api_version = webhooks::ApiVersion::V3;
+        let url = format!(
+            "{}/{}/accounts/{}/webhooks",
+            self.origin, api_version, account_id,
+        );
+        let auth = Some(self.api_key.as_str());
+
+        debug!(?url, "Retrieving webhooks");
+
+        let response_json = self
+            .http_client
+            .get(&url, &QueryParams::default(), timeout, auth)
+            .await?;
+
+        trace!(body = ?serde_json::to_string(&response_json), "sift webhook API response");
+
+        match serde_json::from_value(response_json)? {
+            WebhooksResponse::Webhooks { data } => Ok(data),
+            WebhooksResponse::Error(err) => Err(err),
+        }
+    }
+
+    /// Get a webhook by id.
+    ///
+    /// See <https://sift.com/developers/docs/curl/webhooks-api/retrieve> for examples.
+    ///
+    /// # Errors
+    ///
+    /// This errors if an `account_id` is not set for this client.
+    #[instrument(skip(self, id))]
+    pub async fn get_webhook(&self, id: u64) -> Result<Webhook> {
+        let account_id = self
+            .account_id
+            .as_ref()
+            .ok_or_else(|| Error::Server("account id not specified".into()))?;
+
+        let timeout = DEFAULT_TIMEOUT;
+        let api_version = webhooks::ApiVersion::V3;
+        let url = format!(
+            "{}/{}/accounts/{}/webhooks/{}",
+            self.origin, api_version, account_id, id
+        );
+        let auth = Some(self.api_key.as_str());
+
+        debug!(?url, "Retrieving webhook");
+
+        let response_json = self
+            .http_client
+            .get(&url, &QueryParams::default(), timeout, auth)
+            .await?;
+
+        trace!(?response_json, "sift webhook API response");
+
+        match serde_json::from_value(response_json)? {
+            WebhookResponse::Webhook(webhook) => Ok(webhook),
+            WebhookResponse::Error(err) => Err(err),
+        }
+    }
+
+    /// Update a webhook.
+    ///
+    /// See <https://sift.com/developers/docs/curl/webhooks-api/update> for examples.
+    ///
+    /// # Errors
+    ///
+    /// This errors if an `account_id` is not set for this client.
+    #[instrument(skip(self, webhook))]
+    pub async fn update_webhook(&self, webhook: Webhook) -> Result<Webhook> {
+        let account_id = self
+            .account_id
+            .as_ref()
+            .ok_or_else(|| Error::Server("account id not specified".into()))?;
+
+        let timeout = DEFAULT_TIMEOUT;
+        let api_version = webhooks::ApiVersion::V3;
+        let url = format!(
+            "{}/{}/accounts/{}/webhooks/{}",
+            self.origin, api_version, account_id, webhook.id,
+        );
+        let body = serde_json::json!(webhook);
+        let auth = self.api_key.as_str();
+
+        debug!(?url, "updating webhook");
+        trace!(body = ?serde_json::to_string(&body), "webhook data");
+
+        let response_json = self.http_client.put(&url, &body, timeout, auth).await?;
+
+        trace!(?response_json, "sift webhook update response");
+
+        match serde_json::from_value(response_json)? {
+            WebhookResponse::Webhook(webhook) => Ok(webhook),
+            WebhookResponse::Error(err) => Err(err),
+        }
+    }
+
+    /// Delete a webhook.
+    ///
+    /// See <https://sift.com/developers/docs/curl/webhooks-api/delete> for examples.
+    ///
+    /// # Errors
+    ///
+    /// This errors if an `account_id` is not set for this client.
+    #[instrument(skip(self))]
+    pub async fn delete_webhook(&self, id: u64) -> Result<()> {
+        let account_id = self
+            .account_id
+            .as_ref()
+            .ok_or_else(|| Error::Server("account id not specified".into()))?;
+
+        let timeout = DEFAULT_TIMEOUT;
+        let api_version = webhooks::ApiVersion::V3;
+        let url = format!(
+            "{}/{}/accounts/{}/webhooks/{}",
+            self.origin, api_version, account_id, id,
+        );
+        let auth = self.api_key.as_str();
+
+        debug!(?url, "deleting webhook");
+
+        self.http_client.delete(&url, timeout, auth).await
+    }
 }
 
 impl<T: HttpClient + Default> Client<T> {
@@ -416,6 +609,7 @@ impl<T: HttpClient + Default> Client<T> {
     pub fn with_api_key(api_key: impl Into<String>) -> Self {
         Client {
             api_key: api_key.into(),
+            account_id: None,
             http_client: Default::default(),
             origin: SIFT_ORIGIN.into(),
         }
@@ -424,7 +618,11 @@ impl<T: HttpClient + Default> Client<T> {
 
 impl<T> fmt::Debug for Client<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Client").field("api_key", &"****").finish()
+        f.debug_struct("Client")
+            .field("api_key", &"****")
+            .field("account_id", &self.account_id)
+            .field("origin", &self.origin)
+            .finish()
     }
 }
 
@@ -501,6 +699,7 @@ pub trait HttpClient {
         url: &str,
         query_params: &QueryParams,
         timeout: Duration,
+        username: Option<&str>,
     ) -> Result<serde_json::Value>;
 
     /// Create a new POST request
@@ -512,6 +711,18 @@ pub trait HttpClient {
         timeout: Duration,
         username: Option<&str>,
     ) -> Result<Option<serde_json::Value>>;
+
+    /// Create a new PUT request
+    async fn put(
+        &self,
+        url: &str,
+        body: &serde_json::Value,
+        timeout: Duration,
+        username: &str,
+    ) -> Result<serde_json::Value>;
+
+    /// Create a new DELETE request
+    async fn delete(&self, url: &str, timeout: Duration, username: &str) -> Result<()>;
 }
 
 #[cfg(feature = "awc")]
@@ -522,8 +733,9 @@ impl HttpClient for awc::Client {
         url: &str,
         query_params: &QueryParams,
         timeout: Duration,
+        username: Option<&str>,
     ) -> Result<serde_json::Value> {
-        let mut res = self
+        let mut req = self
             .get(url)
             .header(
                 awc::http::header::USER_AGENT,
@@ -531,7 +743,13 @@ impl HttpClient for awc::Client {
             )
             .timeout(timeout)
             .query(&query_params)
-            .map_err(|err| Error::Server(err.to_string()))?
+            .map_err(|err| Error::Server(err.to_string()))?;
+
+        if let Some(username) = username {
+            req = req.basic_auth(username, None);
+        }
+
+        let mut res = req
             .send()
             .map_err(|err| {
                 tracing::error!(?err, "request error");
@@ -601,6 +819,68 @@ impl HttpClient for awc::Client {
             .map_ok(Some)
             .await
     }
+
+    async fn put(
+        &self,
+        url: &str,
+        body: &serde_json::Value,
+        timeout: Duration,
+        username: &str,
+    ) -> Result<serde_json::Value> {
+        let mut res = self
+            .put(url)
+            .header(
+                awc::http::header::USER_AGENT,
+                format!("sift-rust/{}", env!("CARGO_PKG_VERSION")),
+            )
+            .basic_auth(username, None)
+            .timeout(timeout)
+            .send_json(&body)
+            .map_err(|err| {
+                tracing::error!(?err, "request error");
+                Error::Server(err.to_string())
+            })
+            .await?;
+
+        if !res.status().is_success() {
+            let error: Error = res
+                .json()
+                .map_err(|err| Error::Server(err.to_string()))
+                .await?;
+            return Err(error);
+        }
+
+        res.json()
+            .map_err(|err| Error::Server(err.to_string()))
+            .await
+    }
+
+    async fn delete(&self, url: &str, timeout: Duration, username: &str) -> Result<()> {
+        let mut res = self
+            .delete(url)
+            .header(
+                awc::http::header::USER_AGENT,
+                format!("sift-rust/{}", env!("CARGO_PKG_VERSION")),
+            )
+            .basic_auth(username, None)
+            .timeout(timeout)
+            .send()
+            .map_err(|err| {
+                tracing::error!(?err, "request error");
+                Error::Server(err.to_string())
+            })
+            .await?;
+
+        if !res.status().is_success() {
+            let error: Error = res
+                .json()
+                .map_err(|err| Error::Server(err.to_string()))
+                .await?;
+            return Err(error);
+        }
+
+        Ok(())
+    }
 }
 
 /// Sift client using `awc` as http client
@@ -615,14 +895,22 @@ impl HttpClient for reqwest::Client {
         url: &str,
         query_params: &QueryParams,
         timeout: Duration,
+        username: Option<&str>,
     ) -> Result<serde_json::Value> {
-        let res = self
+        let mut req = self
             .get(url)
             .header(
                 reqwest::header::USER_AGENT,
                 format!("sift-rust/{}", env!("CARGO_PKG_VERSION")),
             )
-            .timeout(timeout)
+            .query(query_params)
+            .timeout(timeout);
+
+        if let Some(username) = username {
+            req = req.basic_auth::<_, String>(username, None);
+        }
+
+        let res = req
             .query(&query_params)
             .send()
             .map_err(|err| {
@@ -686,6 +974,69 @@ impl HttpClient for reqwest::Client {
             .map_err(|err| Error::Server(err.to_string()))
             .map_ok(Some)
             .await
+    }
+
+    async fn put(
+        &self,
+        url: &str,
+        body: &serde_json::Value,
+        timeout: Duration,
+        username: &str,
+    ) -> Result<serde_json::Value> {
+        let res = self
+            .put(url)
+            .header(
+                reqwest::header::USER_AGENT,
+                format!("sift-rust/{}", env!("CARGO_PKG_VERSION")),
+            )
+            .basic_auth::<_, String>(username, None)
+            .timeout(timeout)
+            .json(&body)
+            .send()
+            .map_err(|err| {
+                tracing::error!(?err, "request error");
+                Error::Server(err.to_string())
+            })
+            .await?;
+
+        if !res.status().is_success() {
+            let error: Error = res
+                .json()
+                .map_err(|err| Error::Server(err.to_string()))
+                .await?;
+            return Err(error);
+        }
+
+        res.json()
+            .map_err(|err| Error::Server(err.to_string()))
+            .await
+    }
+
+    async fn delete(&self, url: &str, timeout: Duration, username: &str) -> Result<()> {
+        let res = self
+            .delete(url)
+            .header(
+                reqwest::header::USER_AGENT,
+                format!("sift-rust/{}", env!("CARGO_PKG_VERSION")),
+            )
+            .basic_auth::<_, String>(username, None)
+            .timeout(timeout)
+            .send()
+            .map_err(|err| {
+                tracing::error!(?err, "request error");
+                Error::Server(err.to_string())
+            })
+            .await?;
+
+        if !res.status().is_success() {
+            let error: Error = res
+                .json()
+                .map_err(|err| Error::Server(err.to_string()))
+                .await?;
+            return Err(error);
+        }
+
+        Ok(())
     }
 }
 

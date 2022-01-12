@@ -1,4 +1,4 @@
-//! Sift verificatoin example
+//! Sift verification example
 //!
 //! In order to run the example call:
 //!
@@ -10,7 +10,6 @@
 //!
 //! cargo run --example verification --features=reqwest
 //! ```
-//!
 use sift_science::{
     events::{
         Event, EventOptions, LoginProperties, LoginStatus, VerificationReason, VerificationType,
