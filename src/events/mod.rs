@@ -53,6 +53,7 @@ use serde_with::skip_serializing_none;
 use std::borrow::Cow;
 use std::fmt;
 use std::time::Duration;
+use std::time::SystemTime;
 
 mod complex_field_types;
 mod reserved_events;
@@ -62,10 +63,7 @@ pub use complex_field_types::*;
 pub use reserved_events::*;
 pub use reserved_fields::*;
 
-use crate::{
-    common::{abuse_type_serialize, AbuseType},
-    score::ScoreResponse,
-};
+use crate::common::{abuse_type_serialize, deserialize_ms, serialize_ms, AbuseType};
 
 /// Base unit for currencies.
 ///
@@ -178,6 +176,136 @@ pub struct EventResponse {
     pub(crate) status: i32,
     pub(crate) error_message: String,
     pub(crate) score_response: Option<ScoreResponse>,
+}
+
+/// The requested scoring information for the given user.
+///
+/// <https://sift.com/developers/docs/curl/score-api/get-score/overview>
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ScoreResponse {
+    /// The success or error code.
+    pub status: i32,
+
+    /// Description of error if applicable.
+    pub error_message: String,
+
+    /// Contains the computed scores for all applicable abuse types.
+    pub scores: Option<Scores>,
+
+    /// The `id` for which the score was requested.
+    pub entity_id: Option<String>,
+
+    /// What type of entity is the score in reference to.
+    ///
+    /// This defaults to user.
+    pub entity_type: Option<String>,
+
+    /// Entries for all abuse types for which the given event has been labeled.
+    ///
+    /// NOTE: `latest_labels` is only intended for customers using the Labels API.
+    ///
+    /// The content of this struct is not subject to the abuse types specified in the request; we
+    /// always include all labels that have been applied to the given entity.
+    pub latest_labels: Option<LatestLabels>,
+
+    /// All abuse types for which Decisions have been applied on the given entity.
+    ///
+    /// Note that the content of this map is not subject to the abuse types specified in the
+    /// request; we always include all decisions that have been applied to the given entity.
+    ///
+    /// The map is keyed by abuse type, which could be one of: `payment_abuse`, `account_abuse`,
+    /// `content_abuse`, `promotion_abuse`, `account_takeover`.
+    pub latest_decisions: Option<serde_json::Value>,
+}
+
+/// Contains all computed scores for all applicable abuse types for a given user.
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Scores {
+    /// Score associated with the payment abuse type
+    pub payment_abuse: Option<AbuseScore>,
+
+    /// Score associated with the promotion abuse type
+    pub promotion_abuse: Option<AbuseScore>,
+
+    /// Score associated with the account abuse type
+    pub account_abuse: Option<AbuseScore>,
+
+    /// Score associated with the account takeover abuse type
+    pub account_takeover: Option<AbuseScore>,
+
+    /// Score associated with the content abuse type
+    pub content_abuse: Option<AbuseScore>,
+}
+
+/// Computed score for an abuse type for a given user.
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AbuseScore {
+    /// Score for the user between 0.0 and 1.0. A score of 0.5 translates to a score a 50 in the
+    /// console.
+    pub score: f32,
+
+    /// A list of the most significant reasons for the score and the values associated with the
+    /// user. The included values will vary based on the user. Includes related users in the
+    /// details object when applicable.
+    pub reasons: Vec<AbuseScoreReason>,
+}
+
+/// A list of the most significant reasons for the score and the values associated with the user.
+///
+/// The included values will vary based on the user. Includes related users in the details object
+/// when applicable.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AbuseScoreReason {
+    /// Name of the risk signal.
+    pub name: String,
+
+    /// Value of the risk signal.
+    pub value: String,
+
+    /// Additional details. Provided only when relevant. E.g., may contain a details field which
+    /// contains the IDs of related users.
+    pub details: Option<serde_json::Value>,
+}
+
+/// Contains all computed labels for all applicable abuse types for a given entity.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LatestLabels {
+    /// Label associated with the payment abuse type
+    pub payment_abuse: Option<Label>,
+
+    /// Label associated with the promotion abuse type
+    pub promotion_abuse: Option<Label>,
+
+    /// Label associated with the account abuse type
+    pub account_abuse: Option<Label>,
+
+    /// Label associated with the account takeover abuse type
+    pub account_takeover: Option<Label>,
+
+    /// Label associated with the content abuse type
+    pub content_abuse: Option<Label>,
+}
+
+/// Entry for an abuse types for which a given event has been labeled.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Label {
+    /// Indicates whether a user is engaging in behavior deemed harmful to your business.
+    ///
+    /// Set to true if the user is engaging in abusive activity. Set to false if the user is
+    /// engaging in valid activity.
+    is_bad: bool,
+
+    /// The time the label was applied
+    #[serde(serialize_with = "serialize_ms", deserialize_with = "deserialize_ms")]
+    time: SystemTime,
+
+    /// Freeform text description of the user and/or incident triggering the label.
+    description: Option<String>,
 }
 
 /// Events API version

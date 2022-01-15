@@ -1,12 +1,21 @@
+#[cfg(feature = "decisions")]
+use crate::decisions::{
+    self, Decision, DecisionPage, DecisionRequest, DecisionResult, DecisionStatus, Decisions,
+    Entity, EntityType,
+};
+#[cfg(feature = "labels")]
+use crate::labels::{LabelOptions, LabelProperties};
+#[cfg(feature = "score")]
+use crate::score::{ScoreOptions, ScoreQueryParams};
+#[cfg(feature = "verification")]
+use crate::verification::{
+    self, CheckOptions, CheckRequest, CheckResponse, ResendRequest, SendRequest, SendResponse,
+};
+#[cfg(feature = "webhooks")]
+use crate::webhooks::{self, Webhook, WebhookRequest, WebhookResponse, WebhooksResponse};
 use crate::{
     common::{abuse_type_serialize, AbuseType},
-    events::{self, Event, EventOptions, EventQueryParams, EventResponse},
-    labels::{LabelOptions, LabelProperties},
-    score::{ScoreOptions, ScoreQueryParams, ScoreResponse, Scores},
-    verification::{
-        self, CheckOptions, CheckRequest, CheckResponse, ResendRequest, SendRequest, SendResponse,
-    },
-    webhooks::{self, Webhook, WebhookRequest, WebhookResponse, WebhooksResponse},
+    events::{self, Event, EventOptions, EventQueryParams, EventResponse, ScoreResponse, Scores},
     Error, Result,
 };
 use async_trait::async_trait;
@@ -16,7 +25,7 @@ use serde::Serialize;
 use std::borrow::Cow;
 use std::fmt;
 use std::time::Duration;
-use tracing::{debug, instrument, trace, warn};
+use tracing::{debug, instrument, trace};
 
 const SIFT_ORIGIN: &str = "https://api.sift.com";
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(2);
@@ -50,6 +59,7 @@ impl<T: Clone> Clone for Client<T> {
     fn clone(&self) -> Self {
         Client {
             api_key: self.api_key.clone(),
+            account_id: None,
             http_client: self.http_client.clone(),
             origin: self.origin.clone(),
         }
@@ -148,6 +158,7 @@ impl<T: HttpClient> Client<T> {
     /// Fetches the latest score(s) computed for the specified user and abuse types.
     ///
     /// See <https://sift.com/developers/docs/curl/score-api/get-score/overview>
+    #[cfg(feature = "score")]
     #[instrument(skip(self, opts))]
     pub async fn get_user_score<U>(
         &self,
@@ -187,6 +198,7 @@ impl<T: HttpClient> Client<T> {
     /// score(s).
     ///
     /// See <https://sift.com/developers/docs/curl/score-api/rescore>
+    #[cfg(feature = "score")]
     #[instrument(skip(self, opts))]
     pub async fn rescore_user<U>(&self, user_id: U, mut opts: ScoreOptions) -> Result<ScoreResponse>
     where
@@ -233,6 +245,7 @@ impl<T: HttpClient> Client<T> {
     /// learning system. Learn more about Decisions.
     ///
     /// See <https://sift.com/developers/docs/curl/labels-api/label-user>
+    #[cfg(feature = "labels")]
     #[instrument(skip(self, properties, opts))]
     pub async fn label<U>(
         &self,
@@ -259,6 +272,7 @@ impl<T: HttpClient> Client<T> {
     /// log.
     ///
     /// <https://sift.com/developers/docs/curl/verification-api/send>
+    #[cfg(feature = "verification")]
     #[instrument(skip(self, req))]
     pub async fn send_verification(&self, req: SendRequest) -> Result<SendResponse> {
         let timeout = DEFAULT_TIMEOUT;
@@ -284,7 +298,7 @@ impl<T: HttpClient> Client<T> {
                     error_message,
                     ..
                 } if status != 0 => {
-                    warn!(status, ?error_message, "verification send error");
+                    tracing::warn!(status, ?error_message, "verification send error");
                     Err(Error::Request {
                         status,
                         error_message,
@@ -308,6 +322,7 @@ impl<T: HttpClient> Client<T> {
     /// the original recipient with the same settings (template, verified event info).
     ///
     /// <https://sift.com/developers/docs/curl/verification-api/resend>
+    #[cfg(feature = "verification")]
     #[instrument(skip(self, req))]
     pub async fn resend_verification(&self, req: ResendRequest) -> Result<SendResponse> {
         let timeout = DEFAULT_TIMEOUT;
@@ -333,7 +348,7 @@ impl<T: HttpClient> Client<T> {
                     error_message,
                     ..
                 } if status != 0 => {
-                    warn!(status, ?error_message, "verification resend error");
+                    tracing::warn!(status, ?error_message, "verification resend error");
                     Err(Error::Request {
                         status,
                         error_message,
@@ -363,6 +378,7 @@ impl<T: HttpClient> Client<T> {
     ///   and try again" or "wait for minutes and try again")
     ///
     /// See <https://sift.com/developers/docs/curl/verification-api/check>
+    #[cfg(feature = "verification")]
     #[instrument(skip(self, code, opts))]
     pub async fn check_verification<U>(
         &self,
@@ -408,7 +424,7 @@ impl<T: HttpClient> Client<T> {
                     error_message,
                     ..
                 } if status != 0 => {
-                    warn!(status, ?error_message, "verification check error");
+                    tracing::warn!(status, ?error_message, "verification check error");
                     Err(Error::Request {
                         status,
                         error_message,
@@ -432,6 +448,7 @@ impl<T: HttpClient> Client<T> {
     /// # Errors
     ///
     /// This errors if an `account_id` is not set for this client.
+    #[cfg(feature = "webhooks")]
     #[instrument(skip(self, req))]
     pub async fn create_webhook(&self, req: WebhookRequest) -> Result<Webhook> {
         let account_id = self
@@ -473,6 +490,7 @@ impl<T: HttpClient> Client<T> {
     /// # Errors
     ///
     /// This errors if an `account_id` is not set for this client.
+    #[cfg(feature = "webhooks")]
     #[instrument(skip(self))]
     pub async fn get_webhooks(&self) -> Result<Vec<Webhook>> {
         let account_id = self
@@ -510,6 +528,7 @@ impl<T: HttpClient> Client<T> {
     /// # Errors
     ///
     /// This errors if an `account_id` is not set for this client.
+    #[cfg(feature = "webhooks")]
     #[instrument(skip(self, id))]
     pub async fn get_webhook(&self, id: u64) -> Result<Webhook> {
         let account_id = self
@@ -547,6 +566,7 @@ impl<T: HttpClient> Client<T> {
     /// # Errors
     ///
     /// This errors if an `account_id` is not set for this client.
+    #[cfg(feature = "webhooks")]
     #[instrument(skip(self, webhook))]
     pub async fn update_webhook(&self, webhook: Webhook) -> Result<Webhook> {
         let account_id = self
@@ -583,6 +603,7 @@ impl<T: HttpClient> Client<T> {
     /// # Errors
     ///
     /// This errors if an `account_id` is not set for this client.
+    #[cfg(feature = "webhooks")]
     #[instrument(skip(self))]
     pub async fn delete_webhook(&self, id: u64) -> Result<()> {
         let account_id = self
@@ -601,6 +622,172 @@ impl<T: HttpClient> Client<T> {
         debug!(?url, "deleting webhook");
 
         self.http_client.delete(&url, timeout, auth).await
+    }
+
+    /// Apply a decision
+    ///
+    /// The Apply Decisions API allows you to apply Decisions to users, orders, content or
+    /// sessions. This is important so that Sift can track the actions you've taken within your
+    /// system and learn from them. You can only apply Decisions that are active and already
+    /// configured for your account in the Decisions section in the Console.
+    ///
+    /// When you send a Decision via the API, we will not send a webhook back to you as you'll
+    /// already have a record within your system of what occurred. However, if you were to apply
+    /// that same Decision in the Sift Console, we would send a webhook to your application so that
+    /// you can update your system.
+    ///
+    /// [Decisions section]: https://sift.com/console/decisions
+    ///
+    /// # Errors
+    ///
+    /// This errors if an `account_id` is not set for this client.
+    #[cfg(feature = "decisions")]
+    #[instrument(skip(self, entity, decision))]
+    pub async fn apply_decision(
+        &self,
+        entity: Entity,
+        decision: DecisionRequest,
+    ) -> Result<Decision> {
+        let account_id = self
+            .account_id
+            .as_ref()
+            .ok_or_else(|| Error::Server("account id not specified".into()))?;
+
+        let timeout = DEFAULT_TIMEOUT;
+        let api_version = decisions::ApiVersion::V3;
+        let url = format!(
+            "{}/{}/accounts/{}/{}/decisions",
+            self.origin, api_version, account_id, entity,
+        );
+        let body = serde_json::json!(&decision);
+        let auth = Some(self.api_key.as_str());
+
+        debug!(?url, ?decision, "applying decision");
+        trace!(body = ?serde_json::to_string(&body), "decision data");
+
+        let response_json = self
+            .http_client
+            .post(&url, None, Some(&body), timeout, auth)
+            .await?;
+
+        trace!(?response_json, "decision response");
+
+        match response_json {
+            Some(response_json) => match serde_json::from_value(response_json)? {
+                DecisionResult::Decision(decision) => Ok(decision),
+                DecisionResult::Error(err) => Err(err),
+            },
+            None => Err(Error::Server(
+                "Expected a decision, but received empty server response".into(),
+            )),
+        }
+    }
+
+    /// Get the status of a decision for an entity.
+    ///
+    /// Sift returns the latest decision status for each abuse type so that you have a full view of
+    /// the entity.
+    ///
+    /// # Errors
+    ///
+    /// This errors if an `account_id` is not set for this client.
+    #[cfg(feature = "decisions")]
+    #[instrument(skip(self, entity))]
+    pub async fn decision_status(&self, entity: Entity) -> Result<Decisions> {
+        let account_id = self
+            .account_id
+            .as_ref()
+            .ok_or_else(|| Error::Server("account id not specified".into()))?;
+
+        let timeout = DEFAULT_TIMEOUT;
+        let api_version = decisions::ApiVersion::V3;
+
+        // The path for orders for this api is different than the others in that it does not have a
+        // users/{userId} prefix
+        //
+        // <https://sift.com/developers/docs/curl/decisions-api/decision-status>
+        let path = if let Entity::Order { order_id, .. } = entity {
+            format!("orders/{}", order_id)
+        } else {
+            format!("{}", entity)
+        };
+
+        let url = format!(
+            "{}/{}/accounts/{}/{}/decisions",
+            self.origin, api_version, account_id, path,
+        );
+        let auth = Some(self.api_key.as_str());
+
+        debug!(?url, "getting decision status");
+
+        let response_json = self
+            .http_client
+            .get(&url, &QueryParams::default(), timeout, auth)
+            .await?;
+
+        trace!(?response_json, "decision status response");
+
+        match serde_json::from_value(response_json)? {
+            DecisionResult::Decision(DecisionStatus { decisions }) => Ok(decisions),
+            DecisionResult::Error(err) => Err(err),
+        }
+    }
+
+    /// Get decisions
+    ///
+    /// # Errors
+    ///
+    /// This errors if an `account_id` is not set for this client.
+    #[cfg(feature = "decisions")]
+    #[instrument(skip(self, entity_type, abuse_types, limit, offset))]
+    pub async fn get_decisions(
+        &self,
+        entity_type: Option<EntityType>,
+        abuse_types: Option<Vec<AbuseType>>,
+        limit: Option<u32>,
+        offset: Option<u32>,
+    ) -> Result<DecisionPage> {
+        let account_id = self
+            .account_id
+            .as_ref()
+            .ok_or_else(|| Error::Server("account id not specified".into()))?;
+
+        let timeout = DEFAULT_TIMEOUT;
+        let api_version = decisions::ApiVersion::V3;
+
+        let query_params = QueryParams {
+            entity_type,
+            abuse_types,
+            limit,
+            from: offset,
+            ..Default::default()
+        };
+        let url = format!(
+            "{}/{}/accounts/{}/decisions",
+            self.origin, api_version, account_id
+        );
+        let auth = Some(self.api_key.as_str());
+
+        debug!(
+            ?url,
+            query_params = ?serde_urlencoded::to_string(&query_params),
+            "getting decision page"
+        );
+
+        let response_json = self
+            .http_client
+            .get(&url, &QueryParams::default(), timeout, auth)
+            .await?;
+
+        trace!(
+            json = %serde_json::to_string(&response_json).unwrap(),
+            "decision page response"
+        );
+
+        match serde_json::from_value(response_json)? {
+            DecisionResult::Decision(page) => Ok(page),
+            DecisionResult::Error(err) => Err(err),
+        }
     }
 }
 
@@ -638,6 +825,10 @@ pub struct QueryParams {
     /// See <https://siftscience.com/developers/docs/ruby/score-api/synchronous-scores>
     return_score: Option<bool>,
 
+    /// Filter results to a single entity type.
+    #[cfg(feature = "decisions")]
+    entity_type: Option<EntityType>,
+
     /// List of abuse types, specifying for which abuse types a score should be returned (if
     /// scoring was requested).
     ///
@@ -654,6 +845,12 @@ pub struct QueryParams {
     ///
     /// See <https://siftscience.com/developers/docs/ruby/workflows-api/workflow-decisions>
     return_workflow_status: Option<bool>,
+
+    /// Limit APIs that support pagination.
+    limit: Option<u32>,
+
+    /// Used in conjunction with `limit` parameter to page through result sets.
+    from: Option<u32>,
 }
 
 impl From<EventQueryParams> for QueryParams {
@@ -675,6 +872,7 @@ impl From<EventQueryParams> for QueryParams {
     }
 }
 
+#[cfg(feature = "score")]
 impl From<ScoreQueryParams> for QueryParams {
     fn from(sqp: ScoreQueryParams) -> Self {
         let ScoreQueryParams {
