@@ -13,51 +13,10 @@
 //! support@sift.com and we can help.
 
 use crate::{
-    common::{deserialize_ms, serialize_ms},
     events::{self, ApiVersion, Event, EventOptions},
     AbuseType,
 };
-use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
-use std::time::{Duration, SystemTime};
-
-/// Contains all computed labels for all applicable abuse types for a given entity.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LatestLabels {
-    /// Label associated with the payment abuse type
-    pub payment_abuse: Option<Label>,
-
-    /// Label associated with the promotion abuse type
-    pub promotion_abuse: Option<Label>,
-
-    /// Label associated with the account abuse type
-    pub account_abuse: Option<Label>,
-
-    /// Label associated with the account takeover abuse type
-    pub account_takeover: Option<Label>,
-
-    /// Label associated with the content abuse type
-    pub content_abuse: Option<Label>,
-}
-
-/// Entry for an abuse types for which a given event has been labeled.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Label {
-    /// Indicates whether a user is engaging in behavior deemed harmful to your business.
-    ///
-    /// Set to true if the user is engaging in abusive activity. Set to false if the user is
-    /// engaging in valid activity.
-    is_bad: bool,
-
-    /// The time the label was applied
-    #[serde(serialize_with = "serialize_ms", deserialize_with = "deserialize_ms")]
-    time: SystemTime,
-
-    /// Freeform text description of the user and/or incident triggering the label.
-    description: Option<String>,
-}
+use std::time::Duration;
 
 /// Details of the label
 #[derive(Debug)]

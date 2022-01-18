@@ -3,11 +3,17 @@
 
 mod client;
 mod common;
+#[cfg(feature = "decisions")]
+pub mod decisions;
 mod error;
 pub mod events;
+#[cfg(feature = "labels")]
 pub mod labels;
+#[cfg(feature = "score")]
 pub mod score;
+#[cfg(feature = "verification")]
 pub mod verification;
+#[cfg(feature = "webhooks")]
 pub mod webhooks;
 
 #[cfg(feature = "awc")]

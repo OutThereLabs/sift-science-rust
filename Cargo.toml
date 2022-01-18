@@ -20,6 +20,14 @@ thiserror = { version = "1.0" }
 tracing = "0.1"
 urlencoding = "2.1"
 
+[features]
+default = ["decisions", "labels", "score", "verification", "webhooks"]
+decisions = []
+labels = []
+score = []
+verification = []
+webhooks = []
+
 [dev-dependencies]
 tracing-subscriber = "0.3"
 tokio = { version = "1.11", features=["full"] }

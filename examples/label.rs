@@ -23,9 +23,7 @@ use tracing::{info, Level};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt()
-        .with_max_level(Level::TRACE)
-        .init();
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     let user_id = env::var("USER_ID").expect("must specify USER_ID env var");
     let http_client = reqwest::Client::default();
