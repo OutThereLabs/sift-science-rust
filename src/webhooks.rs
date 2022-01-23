@@ -9,6 +9,11 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::SystemTime;
 
+/// The header sift science will attach to each webhook invocation.
+///
+/// This should be used to verify that the request originates from Sift's servers.
+pub const SIGNATURE_HEADER: &str = "X-Sift-Science-Signature";
+
 /// Options when creating a new [Webhook].
 ///
 /// See <https://sift.com/developers/docs/curl/webhooks-api/create> for examples.
