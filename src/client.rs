@@ -624,6 +624,29 @@ impl<T: HttpClient> Client<T> {
         self.http_client.delete(&url, timeout, auth).await
     }
 
+    /// Verify webhook signature.
+    ///
+    /// Used to verify that webhook invocations originate from Sift's servers.
+    pub fn verify_webhook_signature(
+        &self,
+        signature: &str,
+        body: &[u8],
+        webhook_secret: &str,
+    ) -> Result<()> {
+        use hmac::{Hmac, Mac};
+
+        let mut mac = Hmac::<sha1::Sha1>::new_from_slice(webhook_secret.as_bytes())
+            .map_err(|err| Error::Server(err.to_string()))?;
+
+        mac.update(body);
+
+        if signature == format!("sha1={:x}", mac.finalize().into_bytes()) {
+            Ok(())
+        } else {
+            Err(Error::Server("Invalid webhook signature".into()))
+        }
+    }
+
     /// Apply a decision
     ///
     /// The Apply Decisions API allows you to apply Decisions to users, orders, content or
