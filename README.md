@@ -4,7 +4,7 @@
 
 Example import in Cargo.toml:
 
-    sift_science = "0.3"
+    sift_science = "0.4"
 
 ## Usage
 
