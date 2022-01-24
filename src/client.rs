@@ -635,15 +635,24 @@ impl<T: HttpClient> Client<T> {
     ) -> Result<()> {
         use hmac::{Hmac, Mac};
 
-        let mut mac = Hmac::<sha1::Sha1>::new_from_slice(webhook_secret.as_bytes())
-            .map_err(|err| Error::Server(err.to_string()))?;
+        match signature.split_once("=") {
+            Some(("sha1", tag)) if tag.is_ascii() && tag.len() == 40 => {
+                let mut mac = Hmac::<sha1::Sha1>::new_from_slice(webhook_secret.as_bytes())
+                    .map_err(|err| Error::Server(err.to_string()))?;
 
-        mac.update(body);
+                mac.update(body);
 
-        if signature == format!("sha1={:x}", mac.finalize().into_bytes()) {
-            Ok(())
-        } else {
-            Err(Error::Server("Invalid webhook signature".into()))
+                // parse hex string
+                let hex = (0..20).fold([0; 20], |mut acc, i| {
+                    acc[i] = u8::from_str_radix(&tag[(i * 2)..=(i * 2 + 1)], 16).unwrap_or(0);
+                    acc
+                });
+
+                mac.verify_slice(&hex)
+                    .map_err(|err| Error::Server(err.to_string()))
+            }
+            Some((alg, _)) => Err(Error::Server(format!("unsupported type: {}", alg))),
+            None => Err(Error::Server("Invalid signature value".into())),
         }
     }
 
