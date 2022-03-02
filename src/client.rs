@@ -19,7 +19,7 @@ use crate::{
     Error, Result,
 };
 use async_trait::async_trait;
-#[cfg(any(feature = "awc", feature = "reqwest"))]
+#[cfg(any(feature = "awc", feature = "awc3", feature = "reqwest"))]
 use futures::future::TryFutureExt;
 use serde::Serialize;
 use std::borrow::Cow;
@@ -945,6 +945,168 @@ pub trait HttpClient {
     /// Create a new DELETE request
     async fn delete(&self, url: &str, timeout: Duration, username: &str) -> Result<()>;
 }
+
+#[cfg(feature = "awc3")]
+#[async_trait(?Send)]
+impl HttpClient for awc3::Client {
+    async fn get(
+        &self,
+        url: &str,
+        query_params: &QueryParams,
+        timeout: Duration,
+        username: Option<&str>,
+    ) -> Result<serde_json::Value> {
+        let mut req = self
+            .get(url)
+            .insert_header((
+                awc3::http::header::USER_AGENT,
+                format!("sift-rust/{}", env!("CARGO_PKG_VERSION")),
+            ))
+            .timeout(timeout)
+            .query(&query_params)
+            .map_err(|err| Error::Server(err.to_string()))?;
+
+        if let Some(username) = username {
+            req = req.basic_auth(username, "");
+        }
+
+        let mut res = req
+            .send()
+            .map_err(|err| {
+                tracing::error!(?err, "request error");
+                Error::Server(err.to_string())
+            })
+            .await?;
+
+        res.json()
+            .map_err(|err| Error::Server(err.to_string()))
+            .await
+    }
+
+    async fn post(
+        &self,
+        url: &str,
+        query_params: Option<&QueryParams>,
+        body: Option<&serde_json::Value>,
+        timeout: Duration,
+        username: Option<&str>,
+    ) -> Result<Option<serde_json::Value>> {
+        let mut req = self
+            .post(url)
+            .insert_header((
+                awc3::http::header::USER_AGENT,
+                format!("sift-rust/{}", env!("CARGO_PKG_VERSION")),
+            ))
+            .timeout(timeout);
+
+        if let Some(username) = username {
+            req = req.basic_auth(username, "");
+        }
+
+        if let Some(query_params) = query_params {
+            req = req
+                .query(&query_params)
+                .map_err(|err| Error::Server(err.to_string()))?;
+        }
+
+        let mut res = if let Some(body) = body {
+            req.send_json(&body)
+                .map_err(|err| {
+                    tracing::error!(?err, "request error");
+                    Error::Server(err.to_string())
+                })
+                .await?
+        } else {
+            req.send()
+                .map_err(|err| {
+                    tracing::error!(?err, "request error");
+                    Error::Server(err.to_string())
+                })
+                .await?
+        };
+
+        if res.status() == awc3::http::StatusCode::NO_CONTENT {
+            return Ok(None);
+        } else if !res.status().is_success() {
+            let error: Error = res
+                .json()
+                .map_err(|err| Error::Server(err.to_string()))
+                .await?;
+            return Err(error);
+        }
+
+        res.json()
+            .map_err(|err| Error::Server(err.to_string()))
+            .map_ok(Some)
+            .await
+    }
+
+    async fn put(
+        &self,
+        url: &str,
+        body: &serde_json::Value,
+        timeout: Duration,
+        username: &str,
+    ) -> Result<serde_json::Value> {
+        let mut res = self
+            .put(url)
+            .insert_header((
+                awc3::http::header::USER_AGENT,
+                format!("sift-rust/{}", env!("CARGO_PKG_VERSION")),
+            ))
+            .basic_auth(username, "")
+            .timeout(timeout)
+            .send_json(&body)
+            .map_err(|err| {
+                tracing::error!(?err, "request error");
+                Error::Server(err.to_string())
+            })
+            .await?;
+
+        if !res.status().is_success() {
+            let error: Error = res
+                .json()
+                .map_err(|err| Error::Server(err.to_string()))
+                .await?;
+            return Err(error);
+        }
+
+        res.json()
+            .map_err(|err| Error::Server(err.to_string()))
+            .await
+    }
+
+    async fn delete(&self, url: &str, timeout: Duration, username: &str) -> Result<()> {
+        let mut res = self
+            .delete(url)
+            .insert_header((
+                awc3::http::header::USER_AGENT,
+                format!("sift-rust/{}", env!("CARGO_PKG_VERSION")),
+            ))
+            .basic_auth(username, "")
+            .timeout(timeout)
+            .send()
+            .map_err(|err| {
+                tracing::error!(?err, "request error");
+                Error::Server(err.to_string())
+            })
+            .await?;
+
+        if !res.status().is_success() {
+            let error: Error = res
+                .json()
+                .map_err(|err| Error::Server(err.to_string()))
+                .await?;
+            return Err(error);
+        }
+
+        Ok(())
+    }
+}
+
+/// Sift client using `awc` as http client
+#[cfg(feature = "awc3")]
+pub type Awc3Client = Client<awc3::Client>;
 
 #[cfg(feature = "awc")]
 #[async_trait(?Send)]
