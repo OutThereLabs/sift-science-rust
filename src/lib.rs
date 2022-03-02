@@ -16,6 +16,8 @@ pub mod verification;
 #[cfg(feature = "webhooks")]
 pub mod webhooks;
 
+#[cfg(feature = "awc3")]
+pub use client::Awc3Client;
 #[cfg(feature = "awc")]
 pub use client::AwcClient;
 #[cfg(feature = "reqwest")]
