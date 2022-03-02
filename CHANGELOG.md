@@ -7,6 +7,7 @@
 - Add webhook support (#7)
 - Add decisions API support (#8)
 - Add webhook signature verification (#9)
+- Add support for `awc` v3 via feature (#12)
 
 ### Changed
 
