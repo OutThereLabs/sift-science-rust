@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.4.1]: https://github.com/OutThereLabs/sift-science-rust/compare/v0.4.0...v0.4.1
+
+### Fixed
+
+- Fix abuse score defaults (#13)
+
 ## [v0.4.0]: https://github.com/OutThereLabs/sift-science-rust/compare/v0.3.0...v0.4.0
 
 ### Added
