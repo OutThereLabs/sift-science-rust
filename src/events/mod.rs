@@ -250,6 +250,7 @@ pub struct AbuseScore {
     /// A list of the most significant reasons for the score and the values associated with the
     /// user. The included values will vary based on the user. Includes related users in the
     /// details object when applicable.
+    #[serde(default)]
     pub reasons: Vec<AbuseScoreReason>,
 }
 
