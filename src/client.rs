@@ -635,7 +635,7 @@ impl<T: HttpClient> Client<T> {
     ) -> Result<()> {
         use hmac::{Hmac, Mac};
 
-        match signature.split_once("=") {
+        match signature.split_once('=') {
             Some(("sha1", tag)) if tag.is_ascii() && tag.len() == 40 => {
                 let mut mac = Hmac::<sha1::Sha1>::new_from_slice(webhook_secret.as_bytes())
                     .map_err(|err| Error::Server(err.to_string()))?;
