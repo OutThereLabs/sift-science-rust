@@ -73,7 +73,7 @@ pub enum Entity {
 }
 
 /// The types of entities about which decisions can be made.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum EntityType {
     /// Decisions applied to users.

@@ -264,7 +264,7 @@ pub struct AbuseScoreReason {
     pub name: String,
 
     /// Value of the risk signal.
-    pub value: String,
+    pub value: Option<String>,
 
     /// Additional details. Provided only when relevant. E.g., may contain a details field which
     /// contains the IDs of related users.
