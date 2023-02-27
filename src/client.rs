@@ -383,7 +383,7 @@ impl<T: HttpClient> Client<T> {
     pub async fn check_verification<U>(
         &self,
         user_id: U,
-        code: u32,
+        code: String,
         opts: CheckOptions,
     ) -> Result<CheckResponse>
     where
