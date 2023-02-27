@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.4.3]: https://github.com/OutThereLabs/sift-science-rust/compare/v0.4.2...v0.4.3
+
+### Fixed
+
+- Fix: correct code sending to use string to avoid 0 padding issues (#17)
+
 ## [v0.4.2]: https://github.com/OutThereLabs/sift-science-rust/compare/v0.4.1...v0.4.2
 
 ### Fixed
