@@ -175,7 +175,7 @@ pub(crate) struct CheckRequest {
 
     /// The code the user sent to the customer for validation.
     #[serde(rename = "$code")]
-    pub(crate) code: u32,
+    pub(crate) code: String,
 
     /// This will be the event type that triggered the verification.
     #[serde(rename = "$verified_event")]

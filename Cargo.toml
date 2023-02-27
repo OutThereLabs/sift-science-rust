@@ -10,14 +10,14 @@ description = "A rust Sift Science client"
 [dependencies]
 async-trait = "0.1"
 awc = { version = "2.0", optional = true }
-awc3 = { version = "3.0.0-beta.21", package = "awc", optional = true }
+awc3 = { version = "3.0", package = "awc", optional = true }
 futures = "0.3"
 hmac = { version = "0.12", optional = true }
 reqwest = { version = "0.11", optional = true, features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_urlencoded = "0.7"
-serde_with = "1.10"
+serde_with = "2.0"
 sha1 = { version = "0.10", optional = true }
 thiserror = { version = "1.0" }
 tracing = "0.1"
