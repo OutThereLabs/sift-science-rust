@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.5.0]: https://github.com/OutThereLabs/sift-science-rust/compare/v0.4.3...v0.5.0
+
+### Added
+
+- Add `wallet_address` and `wallet_type` to payment methods (#19)
+- Add `digital_orders` to order and transaction events (#19)
+- Add `receiver_wallet_address` and `receiver_external_address` to transactions (#19)
+
+### Changed
+
+- Make `merchant_id` required in merchant profiles (#19)
+
 ## [v0.4.3]: https://github.com/OutThereLabs/sift-science-rust/compare/v0.4.2...v0.4.3
 
 ### Fixed
