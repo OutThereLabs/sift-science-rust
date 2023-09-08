@@ -450,6 +450,10 @@ pub enum PaymentType {
     #[serde(rename = "$crypto_currency")]
     CryptoCurrency,
 
+    /// Debit Card
+    #[serde(rename = "$debit_card")]
+    DebitCard,
+
     /// Digital wallet
     #[serde(rename = "$digital_wallet")]
     DigitalWallet,
@@ -481,6 +485,10 @@ pub enum PaymentType {
     /// Points
     #[serde(rename = "$points")]
     Points,
+
+    /// Prepaid Card
+    #[serde(rename = "$prepaid_card")]
+    PrepaidCard,
 
     /// Store credit
     #[serde(rename = "$store_credit")]

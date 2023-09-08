@@ -760,6 +760,67 @@ pub struct CreditPoint {
     pub extra: Option<serde_json::Value>,
 }
 
+/// The digital order field type represents a digital asset which can be part of a cryptocurrency
+/// or digital asset transaction.
+///
+/// The value must be a nested object with the appropriate asset subfields. Generally used in the
+/// [CreateOrder](super::Event::CreateOrder), [UpdateOrder](super::Event::UpdateOrder), or
+/// [Transaction](super::Event::Transaction) events.
+///
+/// Please note that digital order cannot be used with `item` or `booking`.
+///
+/// ## Examples
+///
+/// ```
+/// use sift_science::events::{
+///     DigitalOrder, DigitalOrderAssetType, DigitalOrderType,
+/// };
+///
+/// let order = DigitalOrder {
+///     digital_asset: "BTC".to_string(),
+///     pair: Some("BTC_USD".to_string()),
+///     asset_type: Some(DigitalOrderAssetType::Crypto),
+///     order_type: Some(DigitalOrderType::Market),
+///     volume: Some("6.0".to_string()),
+///     extra: None,
+/// };
+/// ```
+///
+/// API Docs: <https://sift.com/developers/docs/curl/events-api/complex-field-types/digital-order>
+///
+/// [Event]: crate::events::Event
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DigitalOrder {
+    /// The trading name of the asset.
+    #[serde(rename = "$digital_asset")]
+    pub digital_asset: String,
+
+    /// Trading pair symbol representing the conversion of one currency to another.
+    ///
+    /// For example, `"BTC_USD"` represents moving bitcoin to US dollars.
+    #[serde(rename = "$pair")]
+    pub pair: Option<String>,
+
+    /// Any digital asset that has value or established ownership.
+    #[serde(rename = "$asset_type")]
+    pub asset_type: Option<DigitalOrderAssetType>,
+
+    /// Any digital asset that has value or established ownership.
+    #[serde(rename = "$order_type")]
+    pub order_type: Option<DigitalOrderType>,
+
+    /// The amount or quantity of the digital asset.
+    ///
+    /// This should be a string representation of a double value.
+    #[serde(rename = "$volume")]
+    pub volume: Option<String>,
+
+    /// Any extra non-reserved fields to be recorded with the digital order.
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
 /// Monetary discounts that are associated with a promotion.
 ///
 /// (e.g. $25 off an order of $100 or more, 10% off, etc). Discounts are usually used for
@@ -962,7 +1023,7 @@ pub struct Item {
 pub struct MerchantProfile {
     /// The internal identifier for the merchant or seller providing the good or service.
     #[serde(rename = "$merchant_id")]
-    pub merchant_id: Option<String>,
+    pub merchant_id: String,
 
     /// The merchant category code follows the 4-digit ISO code.
     ///
@@ -1085,6 +1146,14 @@ pub struct PaymentMethod {
     /// the reason for the decline.
     #[serde(rename = "$decline_reason_code")]
     pub decline_reason_code: Option<String>,
+
+    /// The value entered to identify the Wallet used for the payment.
+    #[serde(rename = "$wallet_address")]
+    pub wallet_address: Option<String>,
+
+    /// The type of wallet used in the payment.
+    #[serde(rename = "$wallet_type")]
+    pub wallet_type: Option<WalletType>,
 
     /// Payer ID returned by Paypal.
     #[serde(rename = "$paypal_payer_id")]
@@ -1293,4 +1362,80 @@ pub struct Segment {
     /// Any extra non-reserved fields to be recorded with the segment.
     #[serde(flatten)]
     pub extra: Option<serde_json::Value>,
+}
+
+/// Any digital asset that has value or established ownership.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum DigitalOrderAssetType {
+    /// Coin assets
+    #[serde(rename = "$coin")]
+    Coin,
+
+    /// Comodity assets
+    #[serde(rename = "$commodity")]
+    Commodity,
+
+    /// Crypto assets
+    #[serde(rename = "$crypto")]
+    Crypto,
+
+    /// Fiat assets
+    #[serde(rename = "$fiat")]
+    Fiat,
+
+    /// Token assets
+    #[serde(rename = "$token")]
+    Token,
+
+    /// Stock assets
+    #[serde(rename = "$stock")]
+    Stock,
+
+    /// Bond assets
+    #[serde(rename = "$bond")]
+    Bond,
+}
+
+/// The type of trade or exchange being made.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum DigitalOrderType {
+    /// Limit orders
+    #[serde(rename = "$limit")]
+    Limit,
+
+    /// Market orders
+    #[serde(rename = "$market")]
+    Market,
+
+    /// Stop limit orders
+    #[serde(rename = "$stop_limit")]
+    StopLimit,
+
+    /// Stop loss orders
+    #[serde(rename = "$stop_loss")]
+    StopLoss,
+
+    /// Take profit orders
+    #[serde(rename = "$take_profit")]
+    TakeProfit,
+
+    /// Take profit limit orders
+    #[serde(rename = "$take_profit_limit")]
+    TakeProfitLimit,
+}
+
+/// The type of wallet used in the payment.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum WalletType {
+    /// Crypto currency wallet
+    #[serde(rename = "$crypto")]
+    Crypto,
+
+    /// Digital wallet
+    #[serde(rename = "$digital")]
+    Digital,
+
+    /// Fiat wallet
+    #[serde(rename = "$fiat")]
+    Fiat,
 }

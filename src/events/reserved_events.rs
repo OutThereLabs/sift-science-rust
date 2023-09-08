@@ -1,8 +1,8 @@
 use crate::common::{deserialize_opt_ms, serialize_opt_ms};
 use crate::events::{
     complex_field_types::{
-        Address, App, Booking, Browser, Image, Item, MerchantProfile, OrderedFrom, PaymentMethod,
-        Promotion,
+        Address, App, Booking, Browser, DigitalOrder, Image, Item, MerchantProfile, OrderedFrom,
+        PaymentMethod, Promotion,
     },
     reserved_fields::*,
     AbuseType, Micros,
@@ -1351,9 +1351,17 @@ pub struct OrderProperties {
     #[serde(rename = "$user_email")]
     pub user_email: Option<String>,
 
-    /// Total transaction amount in micros in the base unit of the $currency_code. 1 cent = 10,000
-    /// micros. $1.23 USD = 123 cents = 1,230,000 micros. For currencies without cents of
-    /// fractional denominations, like the Japanese Yen, use 1 JPY = 1000000 micros.
+    /// Phone number of the user.
+    ///
+    /// This phone number will be used to send One-Time Password (OTP) when required. The phone
+    /// number should be in E.164 format including + and a country code.
+    #[serde(rename = "$verification_phone_number")]
+    pub verification_phone_number: Option<String>,
+
+    /// Total transaction amount in micros in the base unit of the $currency_code.
+    ///
+    /// 1 cent = 10,000 micros. $1.23 USD = 123 cents = 1,230,000 micros. For currencies without
+    ///   cents of fractional denominations, like the Japanese Yen, use 1 JPY = 1000000 micros.
     #[serde(rename = "$amount")]
     pub amount: Option<Micros>,
 
@@ -1456,6 +1464,13 @@ pub struct OrderProperties {
     /// The details about the merchant or seller providing the goods or service.
     #[serde(rename = "$merchant_profile")]
     pub merchant_profile: Option<MerchantProfile>,
+
+    /// The list of digital orders made.
+    ///
+    /// A digital order represents a digital asset which can be part of a cryptocurrency or digital
+    /// asset transaction. Note: cannot be used in conjunction with `items` or `bookings`.
+    #[serde(rename = "$digital_orders")]
+    pub digital_orders: Vec<DigitalOrder>,
 
     /// Any extra non-reserved fields to be recorded with the event.
     #[serde(flatten)]
@@ -1804,6 +1819,13 @@ pub struct TransactionProperties {
     #[serde(rename = "$user_email")]
     pub user_email: Option<String>,
 
+    /// Phone number of the user.
+    ///
+    /// This phone number will be used to send One-Time Password (OTP) when required. The phone
+    /// number should be in E.164 format including + and a country code
+    #[serde(rename = "$verification_phone_number")]
+    pub verification_phone_number: Option<String>,
+
     /// The type of transaction being recorded.
     #[serde(rename = "$transaction_type")]
     pub transaction_type: Option<TransactionType>,
@@ -1933,6 +1955,21 @@ pub struct TransactionProperties {
     /// The address to the specific physical location of the person receiving a transaction.
     #[serde(rename = "$received_address")]
     pub received_address: Option<Address>,
+
+    /// The list of digital orders made.
+    ///
+    /// A digital order represents a digital asset which can be part of a cryptocurrency or digital
+    /// asset transaction.
+    #[serde(rename = "$digital_orders")]
+    pub digital_orders: Vec<DigitalOrder>,
+
+    /// The wallet ID or address of the person receiving a crypto payment.
+    #[serde(rename = "$receiver_wallet_address")]
+    pub receiver_wallet_address: Option<String>,
+
+    /// Use `true` or `false` to indicate if the recipient is on an external platform.
+    #[serde(rename = "$receiver_external_address")]
+    pub receiver_external_address: Option<bool>,
 
     /// Any extra non-reserved fields to be recorded with the event.
     #[serde(flatten)]
